@@ -5,27 +5,24 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
     <script>
-        function toggleLocationAccess() {
-            var locationAccess = localStorage.getItem('locationPermission');
-            if (locationAccess === 'granted') {
-                localStorage.setItem('locationPermission', 'denied');
-                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
-                document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
-                alert('Lokalitetsadgang er blevet deaktiveret.');
-            } else {
-                localStorage.setItem('locationPermission', 'granted');
-                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
-                document.getElementById('locationStatus').innerText = 'Status: Tilladt';
-                alert('Lokalitetsadgang er blevet aktiveret.');
-            }
-        }
-
-        function changeTheme(theme) {
-            document.body.className = theme + '-theme';
-            localStorage.setItem('theme', theme);
-        }
-
         window.onload = function() {
+            // Tjek om temaet allerede er gemt i localStorage
+            var theme = localStorage.getItem('theme');
+            if (!theme) {
+                // Hvis der ikke er noget tema, sæt default til "dag"
+                theme = 'dag';
+                localStorage.setItem('theme', theme);
+            }
+            // Anvend temaet på body
+            document.body.className = theme + '-theme';
+    
+            // Opdater tema-vælgeren, hvis den findes
+            var themeSelect = document.getElementById('themeSelect');
+            if (themeSelect) {
+                themeSelect.value = theme;
+            }
+    
+            // Håndter lokationsadgang
             var locationAccess = localStorage.getItem('locationPermission');
             if (locationAccess === 'granted') {
                 document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
@@ -33,12 +30,6 @@
             } else {
                 document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
                 document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
-            }
-
-            var theme = localStorage.getItem('theme');
-            if (theme) {
-                document.body.className = theme + '-theme';
-                document.getElementById('themeSelect').value = theme;
             }
         };
     </script>

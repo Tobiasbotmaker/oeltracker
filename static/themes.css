@@ -1,3 +1,16 @@
+/* Default theme (Dag Theme) */
+body {
+    background-color: #f8f9fa; /* Lys baggrund */
+    color: #212529; /* Mørk tekst */
+}
+
+body.dag-theme {
+    background-color: #f8f9fa; /* Lys baggrund */
+    color: #212529; /* Mørk tekst */
+}
+
+/* Resten af dine temaer forbliver uændrede */
+
 /* Classic Theme */
 .classic-theme {
     background-color: #3b2f2f; /* Mørkebrun farve */
