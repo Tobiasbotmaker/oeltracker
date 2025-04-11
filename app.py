@@ -17,7 +17,7 @@ migrate = Migrate(app, db)
 class BeerLog(db.Model):
     __tablename__ = 'beer_logs'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Rettet fra 'user.id' til 'users.id'
     count = db.Column(db.Integer, default=0)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     latitude = db.Column(db.Float, nullable=True)
@@ -34,8 +34,8 @@ class User(db.Model):
     
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
-    friend_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)  # Rettet fra 'user.id' til 'users.id'
+    friend_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)  # Rettet fra 'user.id' til 'users.id'
     user = db.relationship('User', foreign_keys=[user_id], backref='friendships')
     friend = db.relationship('User', foreign_keys=[friend_id], backref='friends')
 
