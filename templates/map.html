@@ -5,31 +5,37 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         #map {
             height: 500px;
             width: 100%;
-            border: 1px solid black; 
+            border: 1px solid black;
+        }
+        .navbar {
+            background-color: var(--theme-navbar-bg, #343a40); /* Dynamisk baggrundsfarve baseret på tema */
+        }
+        .navbar .navbar-brand, .navbar .nav-link {
+            color: var(--theme-navbar-text, #ffffff); /* Dynamisk tekstfarve baseret på tema */
         }
     </style>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         function initMap() {
-            console.log("Initializing map...");  // Debugging information
-            var defaultLocation = [56.2639, 9.5018];  // Default location (Denmark)
-            var map = L.map('map').setView(defaultLocation, 6);  // Adjust zoom level as needed
+            console.log("Initializing map...");
+            var defaultLocation = [56.2639, 9.5018]; // Default location (Denmark)
+            var map = L.map('map').setView(defaultLocation, 6); // Adjust zoom level as needed
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
             var beerLogs = {{ beer_logs|tojson }};
-            console.log("Beer logs:", beerLogs);  // Debugging information
+            console.log("Beer logs:", beerLogs);
 
             if (beerLogs.length === 0) {
                 console.log("No location data available yet.");
             } else {
-                // Gruppér øllene efter koordinater
                 var groupedLogs = {};
                 beerLogs.forEach(function(log) {
                     var key = log.latitude + ',' + log.longitude;
@@ -39,7 +45,6 @@
                     groupedLogs[key].count += log.count;
                 });
 
-                // Tilføj markører til kortet
                 Object.values(groupedLogs).forEach(function(group) {
                     L.marker([group.latitude, group.longitude])
                         .addTo(map)
@@ -66,7 +71,7 @@
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
             <ul class="navbar-nav ml-auto align-items-center">
                 <li class="nav-item dropdown">
-                    <a class="nav-link" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <span class="navbar-toggler-icon"></span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">

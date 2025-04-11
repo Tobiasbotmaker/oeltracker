@@ -4,6 +4,7 @@
     <title>Venner</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>
         window.onload = function() {
             var theme = localStorage.getItem('theme');
@@ -22,7 +23,7 @@
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
             <ul class="navbar-nav ml-auto align-items-center">
                 <li class="nav-item dropdown">
-                    <a class="nav-link" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <span class="navbar-toggler-icon"></span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
@@ -42,28 +43,30 @@
         <div class="input-group">
             <input type="text" class="form-control" name="username" placeholder="Søg efter brugere" required>
             <div class="input-group-append">
-                <button type="submit" class="btn btn-primary">Search</button>
+                <button type="submit" class="btn btn-primary">Søg</button>
             </div>
         </div>
     </form>
-    <h2>Dine venner</h2>
+    <h2 class="mt-4">Dine venner</h2>
     <ul class="list-group mb-3">
         {% for friend in friends %}
-        <li class="list-group-item">
-            {{ friend.username }} - Øl drukket: {{ friend.total_beers }}
-            {% if friend.last_beer_time %}
-                - Sidste øl drukket: {{ friend.last_beer_time }}
-            {% endif %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>
+                {{ friend.username }} - Øl drukket: {{ friend.total_beers }}
+                {% if friend.last_beer_time %}
+                    - Sidste øl drukket: {{ friend.last_beer_time }}
+                {% endif %}
+            </span>
         </li>
         {% endfor %}
     </ul>
     {% if search_results %}
-    <h2>Resultater</h2>
+    <h2 class="mt-4">Resultater</h2>
     <ul class="list-group mb-3">
         {% for result in search_results %}
-        <li class="list-group-item">
-            {{ result.username }}
-            <form action="{{ url_for('add_friend', friend_id=result.id) }}" method="post" style="display:inline;">
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ result.username }}</span>
+            <form action="{{ url_for('add_friend', friend_id=result.id) }}" method="post" class="m-0">
                 <button type="submit" class="btn btn-success btn-sm">Tilføj ven</button>
             </form>
         </li>
