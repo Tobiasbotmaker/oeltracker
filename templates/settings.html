@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Indstillinger</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+    <script>
+        function toggleLocationAccess() {
+            var locationAccess = localStorage.getItem('locationPermission');
+            if (locationAccess === 'granted') {
+                localStorage.setItem('locationPermission', 'denied');
+                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
+                document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
+                alert('Lokalitetsadgang er blevet deaktiveret.');
+            } else {
+                localStorage.setItem('locationPermission', 'granted');
+                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
+                document.getElementById('locationStatus').innerText = 'Status: Tilladt';
+                alert('Lokalitetsadgang er blevet aktiveret.');
+            }
+        }
+
+        function changeTheme(theme) {
+            document.body.className = theme + '-theme';
+            localStorage.setItem('theme', theme);
+        }
+
+        window.onload = function() {
+            var locationAccess = localStorage.getItem('locationPermission');
+            if (locationAccess === 'granted') {
+                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
+                document.getElementById('locationStatus').innerText = 'Status: Tilladt';
+            } else {
+                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
+                document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
+            }
+
+            var theme = localStorage.getItem('theme');
+            if (theme) {
+                document.body.className = theme + '-theme';
+                document.getElementById('themeSelect').value = theme;
+            }
+        };
+    </script>
+</head>
+<body class="container">
+    <nav class="navbar navbar-expand-lg">
+        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav ml-auto align-items-center">
+                <li class="nav-item dropdown">
+                    <a class="nav-link" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <span class="navbar-toggler-icon"></span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
+                        <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
+                        <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
+                        <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
+                        <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
+                        <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
+                        <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <h1 class="mt-5">Indstillinger</h1>
+    <button id="locationToggle" class="btn btn-primary" onclick="toggleLocationAccess()">Enable Location Access</button>
+    <span id="locationStatus">Status: Not allowed</span>
+    <br><br>
+    <label for="themeSelect">Vælg Tema:</label>
+    <select id="themeSelect" class="form-control" onchange="changeTheme(this.value)">
+        <option value="classic">Classic</option>
+        <option value="grøn">Grøn</option>
+        <option value="roskilde">Roskilde</option>
+        <option value="nat">Nat</option>
+        <option value="dag">Dag</option>
+    </select>
+    <br><br>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
+</body>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</html>

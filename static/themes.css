@@ -1,0 +1,246 @@
+/* Classic Theme */
+.classic-theme {
+    background-color: #3b2f2f; /* Mørkebrun farve */
+    color: #f8f9fa; /* Lys farve */
+    text-shadow: 1px 1px 2px #a52a2a; /* Rød kant */
+}
+.classic-theme .navbar {
+    background-color: #DAA520; /* Gylden farve */
+}
+.classic-theme .navbar-brand {
+    color: #fff; /* Hvid farve */
+    text-shadow: 1px 1px 2px #a52a2a; /* Rød kant */
+}
+.classic-theme .navbar-toggler-icon {
+    background-image: url('data:image/svg+xml;charset=utf8,%3Csvg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath stroke="rgba%28255, 255, 255, 1%29" stroke-width="2" stroke-linecap="round" stroke-miterlimit="10" d="M4 7h22M4 15h22M4 23h22"/%3E%3C/svg%3E');
+    text-shadow: 1px 1px 2px #a52a2a; /* Rød kant */
+}
+.classic-theme .dropdown-menu {
+    background-color: #3b2f2f; /* Mørkebrun farve */
+}
+.classic-theme .dropdown-item {
+    color: #f8f9fa; /* Lys farve */
+    text-shadow: 1px 1px 2px #a52a2a; /* Rød kant */
+}
+.classic-theme .dropdown-item:hover {
+    background-color: #d4a373; /* Gylden farve */
+}
+.classic-theme .btn-primary {
+    background-color: #d4a373; /* Gylden farve */
+    border-color: #d4a373;
+}
+.classic-theme .btn-danger {
+    background-color: #a52a2a; /* Brun farve */
+    border-color: #a52a2a;
+}
+.classic-theme .btn-secondary {
+    background-color: #d4a373; /* Gylden farve */
+    border-color: #d4a373;
+    color: #fff;
+    text-shadow: 1px 1px 2px #a52a2a; /* Rød kant */
+}
+.classic-theme .btn-green {
+    background-color: #006400; /* Mørkegrøn farve */
+    border-color: #006400;
+    color: #fff;
+    text-shadow: 1px 1px 2px #a52a2a; /* Rød kant */
+}
+.classic-theme .table {
+    color: #f8f9fa; /* Lys farve */
+}
+.classic-theme .table th,
+.classic-theme .table td {
+    color: #f8f9fa; /* Lys farve */
+}
+
+/* Nat Theme */
+.nat-theme {
+    background-color: #343a40;
+    color: #fff;
+}
+.nat-theme .navbar {
+    background-color: #212529;
+}
+.nat-theme .navbar-brand {
+    color: #fff;
+}
+.nat-theme .dropdown-menu {
+    background-color: #212529;
+}
+.nat-theme .dropdown-item {
+    color: #fff;
+}
+.nat-theme .dropdown-item:hover {
+    background-color: #495057;
+}
+.nat-theme .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+.nat-theme .btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+.nat-theme .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+.nat-theme .table {
+    color: #fff;
+}
+.nat-theme .table th,
+.nat-theme .table td {
+    color: #fff;
+}
+
+/* Dag Theme */
+.dag-theme {
+    background-color: #f8f9fa; /* Lys baggrund */
+    color: #212529; /* Mørk tekst */
+}
+.dag-theme .navbar {
+    background-color: #e9ecef; /* Lys grå baggrund */
+}
+.dag-theme .navbar-brand {
+    color: #212529; /* Mørk tekst */
+}
+.dag-theme .navbar-toggler-icon {
+    background-image: url('data:image/svg+xml;charset=utf8,%3Csvg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath stroke="rgba%28218, 165, 32, 1%29" stroke-width="2" stroke-linecap="round" stroke-miterlimit="10" d="M4 7h22M4 15h22M4 23h22"/%3E%3C/svg%3E'); /* Gylden farve */
+}
+.dag-theme .dropdown-menu {
+    background-color: #e9ecef; /* Lys grå baggrund */
+}
+.dag-theme .dropdown-item {
+    color: #212529; /* Mørk tekst */
+}
+.dag-theme .dropdown-item:hover {
+    background-color: #d4a373; /* Gylden farve */
+}
+.dag-theme .btn-primary {
+    background-color: #007bff; /* Blå farve */
+    border-color: #007bff;
+}
+.dag-theme .btn-danger {
+    background-color: #dc3545; /* Rød farve */
+    border-color: #dc3545;
+}
+.dag-theme .btn-secondary {
+    background-color: #6c757d; /* Grå farve */
+    border-color: #6c757d;
+}
+.dag-theme .btn-green {
+    background-color: #28a745; /* Grøn farve */
+    border-color: #28a745;
+    color: #fff;
+}
+.dag-theme .table {
+    color: #212529; /* Mørk tekst */
+}
+.dag-theme .table th,
+.dag-theme .table td {
+    color: #212529; /* Mørk tekst */
+}
+
+/* Grøn Theme */
+.grøn-theme {
+    background-color: #006400; /* Mørkegrøn baggrund */
+    color: #fff; /* Hvid tekst */
+}
+.grøn-theme .navbar {
+    background-color: #008000; /* Grøn farve */
+}
+.grøn-theme .navbar-brand {
+    color: #fff; /* Hvid tekst */
+}
+.grøn-theme .navbar-toggler-icon {
+    background-image: url('data:image/svg+xml;charset=utf8,%3Csvg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath stroke="rgba%28255, 255, 255, 1%29" stroke-width="2" stroke-linecap="round" stroke-miterlimit="10" d="M4 7h22M4 15h22M4 23h22"/%3E%3C/svg%3E'); /* Hvid farve */
+}
+.grøn-theme .dropdown-menu {
+    background-color: #008000; /* Grøn farve */
+}
+.grøn-theme .dropdown-item {
+    color: #fff; /* Hvid tekst */
+}
+.grøn-theme .dropdown-item:hover {
+    background-color: #d4a373; /* Gylden farve */
+}
+.grøn-theme .btn-primary {
+    background-color: #008000; /* Gylden farve */
+    border-color: #008000;
+}
+.grøn-theme .btn-danger {
+    background-color: #a52a2a; /* Brun farve */
+    border-color: #a52a2a;
+}
+.grøn-theme .btn-secondary {
+    background-color: #6c757d; /* Grå farve */
+    border-color: #6c757d;
+}
+.grøn-theme .btn-green {
+    background-color: #28a745; /* Grøn farve */
+    border-color: #28a745;
+    color: #fff;
+}
+.grøn-theme .table {
+    color: #fff; /* Hvid tekst */
+}
+.grøn-theme .table th,
+.grøn-theme .table td {
+    color: #fff; /* Hvid tekst */
+}
+.grøn-theme .list-group-item {
+    background-color: #008000; /* Mørkegrøn baggrund */
+    color: #fff; /* Hvid tekst */
+}
+
+/* Roskilde Theme */
+.roskilde-theme {
+    background-color: #ff6600; /* Orange baggrund */
+    color: #ffffff; /* Sort tekst */
+}
+.roskilde-theme .navbar {
+    background-color: #ff7c24; /* Orange farve */
+}
+.roskilde-theme .navbar-brand {
+    color: #fff; /* Hvid tekst */
+}
+.roskilde-theme .navbar-toggler-icon {
+    background-image: url('data:image/svg+xml;charset=utf8,%3Csvg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath stroke="rgba%28255, 255, 255, 1%29" stroke-width="2" stroke-linecap="round" stroke-miterlimit="10" d="M4 7h22M4 15h22M4 23h22"/%3E%3C/svg%3E'); /* Hvid farve */
+}
+.roskilde-theme .dropdown-menu {
+    background-color: #ff6600; /* Orange farve */
+}
+.roskilde-theme .dropdown-item {
+    color: #ffffff; /* Sort tekst */
+}
+.roskilde-theme .dropdown-item:hover {
+    background-color: #ff9933; /* Lys orange farve */
+}
+.roskilde-theme .btn-primary {
+    background-color: #ff7c24; /* Lys orange farve */
+    border-color: #ff7c24;
+}
+.roskilde-theme .btn-danger {
+    background-color: #cc3300; /* Mørk orange farve */
+    border-color: #cc3300;
+}
+.roskilde-theme .btn-secondary {
+    background-color: #ff7c24; /* Grå farve */
+    border-color: #ff7c24;
+}
+.roskilde-theme .btn-green {
+    background-color: #28a745; /* Grøn farve */
+    border-color: #28a745;
+    color: #fff;
+}
+.roskilde-theme .table {
+    color: #000; /* Sort tekst */
+}
+.roskilde-theme .table th,
+.roskilde-theme .table td {
+    color: #ffffff; /* Sort tekst */
+}
+.roskilde-theme .list-group-item {
+    background-color: #ff7c24; /* Mørkegrøn baggrund */
+    color: #fff; /* Hvid tekst */
+}

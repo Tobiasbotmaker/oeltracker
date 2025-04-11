@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hvilken øl skal jeg drikke?</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+    <style>
+        #wheel {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            border: 5px solid #000;
+            position: relative;
+            margin: 20px auto;
+        }
+        .wheel-segment {
+            width: 50%;
+            height: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0% 0%;
+            overflow: hidden;
+        }
+        .wheel-segment div {
+            width: 200%;
+            height: 200%;
+            border-radius: 50%;
+            position: absolute;
+            top: -50%;
+            left: -50%;
+        }
+    </style>
+    <script>
+        let beers = [];
+
+        function addBeer() {
+            const beerName = document.getElementById('beerName').value;
+            if (beerName) {
+                beers.push(beerName);
+                document.getElementById('beerName').value = '';
+                updateBeerList();
+                drawWheel();
+            }
+        }
+
+        function removeBeer(index) {
+            beers.splice(index, 1);
+            updateBeerList();
+            drawWheel();
+        }
+
+        function updateBeerList() {
+            const beerList = document.getElementById('beerList');
+            beerList.innerHTML = '';
+            beers.forEach((beer, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `${beer} <button class="btn btn-danger btn-sm" onclick="removeBeer(${index})">Slet</button>`;
+                beerList.appendChild(li);
+            });
+        }
+
+        function drawWheel() {
+            const wheel = document.getElementById('wheel');
+            wheel.innerHTML = '';
+            const segmentAngle = 360 / beers.length;
+            beers.forEach((beer, index) => {
+                const segment = document.createElement('div');
+                segment.className = 'wheel-segment';
+                segment.style.transform = `rotate(${index * segmentAngle}deg)`;
+                const segmentContent = document.createElement('div');
+                segmentContent.style.backgroundColor = `hsl(${index * segmentAngle}, 100%, 50%)`;
+                segmentContent.innerHTML = `<span style="transform: rotate(-${index * segmentAngle}deg);">${beer}</span>`;
+                segment.appendChild(segmentContent);
+                wheel.appendChild(segment);
+            });
+        }
+
+        function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            const randomAngle = Math.floor(Math.random() * 360);
+            wheel.style.transition = 'transform 4s ease-out';
+            wheel.style.transform = `rotate(${randomAngle + 360 * 5}deg)`;
+            setTimeout(() => {
+                const selectedBeer = beers[Math.floor(randomAngle / (360 / beers.length))];
+                alert(`Du skal drikke: ${selectedBeer}`);
+            }, 4000);
+        }
+
+        window.onload = function() {
+            var theme = localStorage.getItem('theme');
+            if (theme) {
+                document.body.className = theme + '-theme';
+            }
+        };
+    </script>
+</head>
+<body class="container">
+    <nav class="navbar navbar-expand-lg">
+        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav ml-auto align-items-center">
+                <li class="nav-item dropdown">
+                    <a class="nav-link" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <span class="navbar-toggler-icon"></span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
+                        <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
+                        <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
+                        <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
+                        <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
+                        <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
+                        <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <h1 class="mt-5">Hvilken øl skal jeg drikke?</h1>
+    <p>Indtast de øl du har derhjemme eller de øl du har overvejet at købe, og lad hjulet vælge for dig</p>
+    <div class="form-group">
+        <input type="text" id="beerName" class="form-control" placeholder="Tilføj en øl">
+        <button class="btn btn-primary mt-2" onclick="addBeer()">Tilføj</button>
+    </div>
+    <ul id="beerList" class="list-group mb-3"></ul>
+    <div id="wheel"></div>
+    <button class="btn btn-success mt-3" onclick="spinWheel()">Spin the Wheel</button><br>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
