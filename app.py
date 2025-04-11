@@ -4,8 +4,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 import os
+import logging
+logging.basicConfig(level=logging.INFO)
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://beer_game_db_user:hMVeKc07Z2hLBMs28p9cllxyglWMNqxy@dpg-cvslpd7diees73fj3mkg-a.frankfurt-postgres.render.com/beer_game_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Slå ændringssporing fra (for performance)
 app.config['SECRET_KEY'] = 'CIpFfzd/lCsLNdeBtZ9sxGkS8gkkFz3w'
@@ -13,6 +15,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 class BeerLog(db.Model):
+    __tablename__ = 'beer_logs'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     count = db.Column(db.Integer, default=0)
@@ -27,6 +30,7 @@ class User(db.Model):
     password = db.Column(db.String(150), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     beers = db.relationship('BeerLog', backref='user', lazy=True)
+    __table_args__ = {'extend_existing': True}
     
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
