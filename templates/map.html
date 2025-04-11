@@ -25,13 +25,25 @@
 
             var beerLogs = {{ beer_logs|tojson }};
             console.log("Beer logs:", beerLogs);  // Debugging information
+
             if (beerLogs.length === 0) {
                 console.log("No location data available yet.");
             } else {
+                // Gruppér øllene efter koordinater
+                var groupedLogs = {};
                 beerLogs.forEach(function(log) {
-                    L.marker([log.latitude, log.longitude])
+                    var key = log.latitude + ',' + log.longitude;
+                    if (!groupedLogs[key]) {
+                        groupedLogs[key] = { count: 0, latitude: log.latitude, longitude: log.longitude };
+                    }
+                    groupedLogs[key].count += log.count;
+                });
+
+                // Tilføj markører til kortet
+                Object.values(groupedLogs).forEach(function(group) {
+                    L.marker([group.latitude, group.longitude])
                         .addTo(map)
-                        .bindPopup(log.timestamp);
+                        .bindPopup("Antal øl drukket her: " + group.count);
                 });
             }
         }
