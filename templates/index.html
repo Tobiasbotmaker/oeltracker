@@ -4,6 +4,7 @@
     <title>Øl tracker</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         .logout-button {
             position: fixed;
@@ -20,15 +21,13 @@
         }
 
         function addBeer() {
-            var audio = new Audio('/static/click-sound.mp3');  // Path to your audio file in the static directory
+            var audio = new Audio('/static/click-sound.mp3');
             audio.play();
 
             var locationAccess = localStorage.getItem('locationPermission');
             if (locationAccess === 'granted') {
                 if (navigator.geolocation) {
-                    console.log("Requesting geolocation permission...");
                     navigator.geolocation.getCurrentPosition(function(position) {
-                        console.log("Geolocation data:", position);
                         var form = document.getElementById('addBeerForm');
                         var latitudeInput = document.createElement('input');
                         latitudeInput.type = 'hidden';
@@ -42,10 +41,8 @@
                         longitudeInput.value = position.coords.longitude;
                         form.appendChild(longitudeInput);
 
-                        console.log("Form data before submission:", new FormData(form));
                         form.submit();
                     }, function(error) {
-                        console.error("Geolocation error:", error);
                         alert("Din lokalitet er ikke tilgængelig i øjeblikket");
                         document.getElementById('addBeerForm').submit();
                     });
@@ -63,10 +60,8 @@
             if (result) {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(function(position) {
-                        console.log("Geolocation permission granted:", position);
                         localStorage.setItem('locationPermission', 'granted');
                     }, function(error) {
-                        console.error("Geolocation error:", error);
                         alert("Din lokalitet er ikke tilgængelig i øjeblikket.");
                         localStorage.setItem('locationPermission', 'denied');
                     });
@@ -81,16 +76,14 @@
         }
 
         window.onload = function() {
-            // Håndter geolocation-tilladelser
             var locationPermission = localStorage.getItem('locationPermission');
             if (!locationPermission) {
                 requestLocationPermission();
             }
 
-            // Håndter temaer
             var theme = localStorage.getItem('theme');
             if (!theme) {
-                theme = 'dag'; // Sæt dag-tema som standard
+                theme = 'dag';
                 localStorage.setItem('theme', theme);
             }
             document.body.className = theme + '-theme';
@@ -104,9 +97,9 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
-            <ul class="navbar-nav ml-auto align-items-center">
+            <ul class="navbar-nav ml-auto">
                 <li class="nav-item dropdown">
-                    <a class="nav-link" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <span class="navbar-toggler-icon"></span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
@@ -129,9 +122,9 @@
         {% endif %}
         <p class="beer-text">Antal øl drukket i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
         <form id="addBeerForm" action="{{ url_for('add_beer') }}" method="post" class="mb-3">
-            <button type="button" class="btn btn-green" onclick="addBeer()">Registrer øl</button>
+            <button type="button" class="btn btn-success" onclick="addBeer()">Registrer øl</button>
         </form>
-        <form id="deleteBeerForm" action="{{ url_for('delete_beer') }}" method="post" style="display:inline;">
+        <form id="deleteBeerForm" action="{{ url_for('delete_beer') }}" method="post" class="d-inline">
             <button type="button" class="btn btn-danger" onclick="confirmDelete()">Slet øl</button>
         </form>
         {% if is_admin %}
