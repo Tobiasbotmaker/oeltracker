@@ -4,6 +4,7 @@
     <title>Hvilken øl skal jeg drikke?</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         #wheel {
             width: 300px;
@@ -121,13 +122,13 @@
         </div>
     </nav>
     <h1 class="mt-5">Hvilken øl skal jeg drikke?</h1>
-<p class="mb-3">Indtast de øl du har derhjemme eller de øl du har overvejet at købe, og lad hjulet vælge for dig</p>
-<div class="form-group">
-    <input type="text" id="beerName" class="form-control" placeholder="Tilføj en øl">
-    <button class="btn btn-primary mt-2" onclick="addBeer()">Tilføj</button>
-</div>
-<ul id="beerList" class="list-group mb-3"></ul>
-<div id="wheel" class="my-3"></div>
+    <p>Indtast de øl du har derhjemme eller de øl du har overvejet at købe, og lad hjulet vælge for dig</p>
+    <div class="form-group">
+        <input type="text" id="beerName" class="form-control" placeholder="Tilføj en øl">
+        <button class="btn btn-primary mt-2" onclick="addBeer()">Tilføj</button>
+    </div>
+    <ul id="beerList" class="list-group mb-3"></ul>
+    <div id="wheel"></div>
     <button class="btn btn-success mt-3" onclick="spinWheel()">Spin the Wheel</button><br>
     <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
