@@ -68,6 +68,10 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
+        # Log brugeren ind
+        session['user_id'] = new_user.id
+        
+        # Send brugeren til index-siden
         return redirect(url_for('index'))
     
     return render_template('register.html')

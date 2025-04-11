@@ -26,9 +26,9 @@
             var locationAccess = localStorage.getItem('locationPermission');
             if (locationAccess === 'granted') {
                 if (navigator.geolocation) {
-                    console.log("Requesting geolocation permission...");  // Debugging information
+                    console.log("Requesting geolocation permission...");
                     navigator.geolocation.getCurrentPosition(function(position) {
-                        console.log("Geolocation data:", position);  // Debugging information
+                        console.log("Geolocation data:", position);
                         var form = document.getElementById('addBeerForm');
                         var latitudeInput = document.createElement('input');
                         latitudeInput.type = 'hidden';
@@ -42,59 +42,58 @@
                         longitudeInput.value = position.coords.longitude;
                         form.appendChild(longitudeInput);
 
-                        console.log("Form data before submission:", new FormData(form));  // Debugging information
+                        console.log("Form data before submission:", new FormData(form));
                         form.submit();
                     }, function(error) {
-                        console.error("Geolocation error:", error);  // Debugging information
-                        alert("Din lokalitet er ikke tilgængelig i øjeblikket");  // Show custom error message to the user
-                        // Submit the form even if geolocation fails
+                        console.error("Geolocation error:", error);
+                        alert("Din lokalitet er ikke tilgængelig i øjeblikket");
                         document.getElementById('addBeerForm').submit();
                     });
                 } else {
                     alert("Geolocation is not supported by this browser.");
-                    console.log("Geolocation is not supported by this browser.");  // Debugging information
-                    // Submit the form even if geolocation is not supported
                     document.getElementById('addBeerForm').submit();
                 }
             } else {
-                // Submit the form without location data if location access is not granted
                 document.getElementById('addBeerForm').submit();
             }
         }
 
         function requestLocationPermission() {
-            var result = confirm("Do you want to allow us to use your location for showing where you drank the beers? You can always change this later in the settings page.");
+            var result = confirm("Vil du give tilladelse til at bruge din lokalitet for at vise, hvor du drak øllene? Du kan altid ændre dette senere på indstillingssiden.");
             if (result) {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(function(position) {
-                        console.log("Geolocation permission granted:", position);  // Debugging information
+                        console.log("Geolocation permission granted:", position);
                         localStorage.setItem('locationPermission', 'granted');
                     }, function(error) {
-                        console.error("Geolocation error:", error);  // Debugging information
-                        alert("Your location is not available at the moment.");  // Show custom error message to the user
+                        console.error("Geolocation error:", error);
+                        alert("Din lokalitet er ikke tilgængelig i øjeblikket.");
                         localStorage.setItem('locationPermission', 'denied');
                     });
                 } else {
-                    alert("Geolocation is not supported by this browser.");
-                    console.log("Geolocation is not supported by this browser.");  // Debugging information
+                    alert("Geolocation understøttes ikke af denne browser.");
                     localStorage.setItem('locationPermission', 'unsupported');
                 }
             } else {
-                alert("You can change this setting later in the settings page.");
+                alert("Du kan ændre denne indstilling senere på indstillingssiden.");
                 localStorage.setItem('locationPermission', 'denied');
             }
         }
 
         window.onload = function() {
+            // Håndter geolocation-tilladelser
             var locationPermission = localStorage.getItem('locationPermission');
             if (!locationPermission) {
                 requestLocationPermission();
             }
 
+            // Håndter temaer
             var theme = localStorage.getItem('theme');
-            if (theme) {
-                document.body.className = theme + '-theme';
+            if (!theme) {
+                theme = 'dag'; // Sæt dag-tema som standard
+                localStorage.setItem('theme', theme);
             }
+            document.body.className = theme + '-theme';
         };
     </script>
 </head>
@@ -115,7 +114,7 @@
                         <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
                         <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
                         <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-                        <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a> <!-- Ny knap -->
+                        <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
                         <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
                     </div>
                 </li>
@@ -128,7 +127,7 @@
         {% if last_beer_time %}
             <p class="beer-text">Sidste øl drukket: {{ last_beer_time }}</p>
         {% endif %}
-        <p class="beer-text">Antal øl drukket i alt siden serveren blev opretter: {{ total_beers_ever }}</p>
+        <p class="beer-text">Antal øl drukket i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
         <form id="addBeerForm" action="{{ url_for('add_beer') }}" method="post" class="mb-3">
             <button type="button" class="btn btn-green" onclick="addBeer()">Registrer øl</button>
         </form>
