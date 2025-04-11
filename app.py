@@ -43,9 +43,7 @@ def index():
             total_beers = sum(log.count for log in beer_logs)
             last_beer_time = beer_logs[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if beer_logs else None
             total_beers_ever = db.session.query(db.func.sum(BeerLog.count)).scalar() or 0
-            print("Rendering index.html with data:", user.username, total_beers, last_beer_time, user.is_admin, total_beers_ever)  # Debugging information
             return render_template('index.html', username=user.username, total_beers=total_beers, last_beer_time=last_beer_time, is_admin=user.is_admin, total_beers_ever=total_beers_ever)
-    print("User not in session or not found")  # Debugging information
     return redirect(url_for('register'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -99,15 +97,9 @@ def add_beer():
         if user:
             latitude = request.form.get('latitude')
             longitude = request.form.get('longitude')
-            print(f"Latitude: {latitude}, Longitude: {longitude}")  # Debugging information
             beer_log = BeerLog(user_id=user.id, count=1, timestamp=datetime.utcnow(), latitude=latitude, longitude=longitude)
             db.session.add(beer_log)
             db.session.commit()
-            print("Beer log added:", beer_log)  # Debugging information
-        else:
-            print("User not found in session")  # Debugging information
-    else:
-        print("User not in session")  # Debugging information
     return redirect(url_for('index'))
 
 @app.route('/admin')
@@ -139,7 +131,6 @@ def friends():
     if 'user_id' in session:
         user = db.session.get(User, session['user_id'])
         if not user:
-            print("User not found in session")  # Debugging information
             return redirect(url_for('login'))
         friends = []
         for friendship in user.friendships:
@@ -201,9 +192,7 @@ def map():
                     'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
                 } for log in beer_logs if log.latitude and log.longitude
             ]
-            print("Serialized beer logs:", beer_logs_serializable)  # Debugging information
             return render_template('map.html', beer_logs=beer_logs_serializable)
-    print("User not in session or not found")  # Debugging information
     return redirect(url_for('login'))
 
 @app.route('/settings')
@@ -218,7 +207,6 @@ def add_test_beer_log():
             beer_log = BeerLog(user_id=user.id, count=1, timestamp=datetime.utcnow(), latitude=37.7749, longitude=-122.4194)
             db.session.add(beer_log)
             db.session.commit()
-            print("Test beer log added:", beer_log)  # Debugging information
     return redirect(url_for('map'))
 
 @app.route('/leaderboard')
