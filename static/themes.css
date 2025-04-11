@@ -1,3 +1,58 @@
+/* Eksisterende temaer forbliver uændrede ... */
+
+/* Responsiv styling */
+
+/* Små skærme (mobil) */
+@media (max-width: 768px) {
+    #map {
+        height: 40vh; /* Mindre højde på kortet */
+    }
+    .navbar-brand {
+        font-size: 1.2rem; /* Mindre tekststørrelse i navbaren */
+    }
+    .btn {
+        font-size: 0.9rem; /* Mindre knapper */
+    }
+    h1 {
+        font-size: 1.5rem; /* Mindre overskrifter */
+    }
+    .dropdown-menu {
+        font-size: 0.9rem; /* Mindre dropdown-menu */
+    }
+}
+
+/* Mellemstore skærme (tablets) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    #map {
+        height: 50vh; /* Medium højde på kortet */
+    }
+    .navbar-brand {
+        font-size: 1.5rem; /* Medium tekststørrelse i navbaren */
+    }
+    h1 {
+        font-size: 2rem; /* Medium overskrifter */
+    }
+    .btn {
+        font-size: 1rem; /* Medium knapper */
+    }
+}
+
+/* Store skærme (desktop) */
+@media (min-width: 1025px) {
+    #map {
+        height: 60vh; /* Større højde på kortet */
+    }
+    .navbar-brand {
+        font-size: 1.8rem; /* Større tekststørrelse i navbaren */
+    }
+    h1 {
+        font-size: 2.5rem; /* Større overskrifter */
+    }
+    .btn {
+        font-size: 1.1rem; /* Større knapper */
+    }
+}
+
 /* Default theme (Dag Theme) */
 body {
     background-color: #f8f9fa; /* Lys baggrund */
