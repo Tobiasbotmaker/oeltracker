@@ -32,6 +32,26 @@
                 document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
             }
         };
+
+        function changeTheme(theme) {
+            // Gem det valgte tema i localStorage
+            localStorage.setItem('theme', theme);
+            // Anvend temaet på body
+            document.body.className = theme + '-theme';
+        }
+
+        function toggleLocationAccess() {
+            var locationAccess = localStorage.getItem('locationPermission');
+            if (locationAccess === 'granted') {
+                localStorage.setItem('locationPermission', 'denied');
+                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
+                document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
+            } else {
+                localStorage.setItem('locationPermission', 'granted');
+                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
+                document.getElementById('locationStatus').innerText = 'Status: Tilladt';
+            }
+        }
     </script>
 </head>
 <body class="container">
