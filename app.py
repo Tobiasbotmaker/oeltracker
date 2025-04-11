@@ -197,6 +197,7 @@ def map():
                 {
                     'latitude': log.latitude,
                     'longitude': log.longitude,
+                    'count': log.count,  # Tilføj count her
                     'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
                 } for log in beer_logs if log.latitude and log.longitude
             ]

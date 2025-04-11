@@ -33,6 +33,14 @@
             var beerLogs = {{ beer_logs|tojson }};
             console.log("Beer logs:", beerLogs);
 
+            beerLogs.forEach(function(log) {
+                if (log.latitude && log.longitude) {
+                    L.marker([log.latitude, log.longitude])
+                        .addTo(map)
+                     .bindPopup("Antal øl drukket her: " + log.count);
+                }
+        });
+
             if (beerLogs.length === 0) {
                 console.log("No location data available yet.");
             } else {
