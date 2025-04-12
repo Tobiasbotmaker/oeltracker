@@ -69,7 +69,7 @@
                         },
                         function (error) {
                             // Lokationen kan ikke findes, men tilladelsen er stadig givet
-                            alert("Din lokalitet er ikke tilgængelig i øjeblikket, men tilladelsen er givet.");
+                            alert("Din lokalitet er ikke tilgængelig i øjeblikket, men tilladelsen er givet. Tjek din browsers indstillinger for at se om lokaliteten er slået fra");
                         }
                     );
                 } else {
@@ -86,8 +86,11 @@
             var locationPermission = localStorage.getItem('locationPermission');
             var isNewUser = {{ is_new_user|tojson }}; // Variabel fra backend
         
-            // Spørg om lokationstilladelse, hvis det er en ny bruger, eller hvis der ikke er nogen gemt værdi
-            if (!locationPermission || isNewUser) {
+            console.log("isNewUser:", isNewUser); // Debugging
+            console.log("locationPermission:", locationPermission); // Debugging
+        
+            // Spørg kun om lokationstilladelse, hvis brugeren er ny
+            if (isNewUser) {
                 requestLocationPermission();
             }
         
@@ -98,6 +101,18 @@
             }
             document.body.className = theme + '-theme';
         };
+        
+        function requestLocationPermission() {
+            var result = confirm("Vil du give tilladelse til at bruge din lokalitet for at vise, hvor du drak øllene? Du kan altid ændre dette senere på indstillingssiden.");
+            if (result) {
+                // Hvis brugeren accepterer
+                localStorage.setItem('locationPermission', 'granted');
+            } else {
+                // Hvis brugeren afviser
+                localStorage.setItem('locationPermission', 'denied');
+                alert("Du kan ændre denne indstilling senere på indstillingssiden.");
+            }
+        }
     </script>
 </head>
 <body class="container d-flex flex-column">
@@ -120,11 +135,11 @@
     <div class="flex-grow-1 beer-background">
         <br>
         <h1 class="mt-5 beer-title">Velkommen, {{ username }}</h1>
-        <p class="beer-text">Antal øl drukket: {{ total_beers }}</p>
+        <p class="beer-text">Antal øl du har drukket: {{ total_beers }}</p>
         {% if last_beer_time %}
-            <p class="beer-text">Sidste øl drukket: {{ last_beer_time }}</p>
+            <p class="beer-text">Sidste øl du har drukket: {{ last_beer_time }}</p>
         {% endif %}
-        <p class="beer-text">Antal øl drukket i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
+        <p class="beer-text">Antal øl drukket af alle bruger i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
         <form id="addBeerForm" action="{{ url_for('add_beer') }}" method="post" class="mb-3">
             <button type="button" class="btn btn-success" onclick="addBeer()">Registrer øl</button>
         </form>

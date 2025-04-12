@@ -44,14 +44,12 @@ def index():
     if 'user_id' in session:
         user = db.session.get(User, session['user_id'])
         if user:
-            beer_logs = BeerLog.query.filter_by(user_id=user.id).all()
-            total_beers = sum(log.count for log in beer_logs)
-            last_beer_time = beer_logs[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if beer_logs else None
-            total_beers_ever = db.session.query(db.func.sum(BeerLog.count)).scalar() or 0
-            
-            # Tjek om brugeren er ny
-            is_new_user = request.args.get('is_new_user', False)
-            
+            # Beregn nødvendige data
+            total_beers = sum(beer.count for beer in user.beers)
+            last_beer_time = user.beers[-1].timestamp if user.beers else None
+            total_beers_ever = BeerLog.query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
+            is_new_user = session.pop('is_new_user', False)  # Hent og fjern 'is_new_user' fra sessionen
+
             return render_template(
                 'index.html',
                 username=user.username,
@@ -62,6 +60,20 @@ def index():
                 is_new_user=is_new_user
             )
     return redirect(url_for('register'))
+
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        admin_username = request.form['username']
+        admin_password = request.form['password']
+
+        # Hardkodede admin-oplysninger (kan flyttes til miljøvariabler for sikkerhed)
+        if admin_username == 'admin' and admin_password == 'secure_admin_password':
+            session['is_admin'] = True  # Sæt admin-session
+            return redirect(url_for('admin'))
+        else:
+            flash('Invalid admin credentials.', 'danger')
+    return render_template('admin_login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -80,11 +92,11 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
-        # Log brugeren ind
+        # Log brugeren ind og marker som ny bruger
         session['user_id'] = new_user.id
+        session['is_new_user'] = True  # Marker som ny bruger
         
-        # Send brugeren til index-siden med en indikator for, at det er en ny bruger
-        return redirect(url_for('index', is_new_user=True))
+        return redirect(url_for('index'))
     
     return render_template('register.html')
 
@@ -93,22 +105,30 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+
+        # Håndter login for både admin og almindelige brugere
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
+            session['is_admin'] = user.is_admin  # Gem admin-status i sessionen
             if user.is_admin:
-                return redirect(url_for('admin'))
-            else:
-                return redirect(url_for('index'))
+                return redirect(url_for('admin'))  # Send admin-brugere til admin-siden
+            return redirect(url_for('index'))  # Send almindelige brugere til forsiden
         else:
-            flash('Brugernavnet findes ikke eller adgangskoden er forkert.')
-            return redirect(url_for('login'))
+            flash('Brugernavnet findes ikke eller adgangskoden er forkert.', 'danger')
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
+    session.pop('is_admin', None)  # Fjern admin-session
     return redirect(url_for('login'))
+
+@app.route('/admin_logout')
+def admin_logout():
+    session.pop('is_admin', None)  # Fjern admin-session
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('admin_login'))
 
 @app.route('/add_beer', methods=['POST'])
 def add_beer():
@@ -124,26 +144,34 @@ def add_beer():
 
 @app.route('/admin')
 def admin():
-    if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
-        if user and user.is_admin:
-            users = User.query.all()
-            return render_template('admin.html', users=users)
-    return redirect(url_for('login'))
+    if session.get('is_admin'):  # Tjek om brugeren er logget ind som admin
+        users = User.query.all()
+        return render_template('admin.html', users=users)
+    flash('You do not have access to this page.', 'danger')
+    return redirect(url_for('admin_login'))
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
-    if 'user_id' in session:
-        current_user = db.session.get(User, session['user_id'])
-        if current_user and current_user.is_admin:
-            user = db.session.get(User, user_id)
-            if user and user.username != 'admin':  # Prevent deletion of admin user
-                # Delete associated BeerLog entries
+    if session.get('is_admin'):  # Tjek om brugeren er admin
+        user = db.session.get(User, user_id)
+        if user:  # Tjekker kun, om brugeren findes
+            try:
+                # Slet tilknyttede BeerLog-poster
                 BeerLog.query.filter_by(user_id=user.id).delete()
-                # Delete associated Friendship entries
+                # Slet tilknyttede Friendship-poster
                 Friendship.query.filter((Friendship.user_id == user.id) | (Friendship.friend_id == user.id)).delete()
+                # Slet brugeren
                 db.session.delete(user)
                 db.session.commit()
+                flash(f'Brugeren "{user.username}" blev slettet.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Fejl ved sletning af bruger {user_id}: {e}")
+                flash('Der opstod en fejl under sletningen af brugeren.', 'danger')
+        else:
+            flash('Brugeren blev ikke fundet.', 'warning')
+    else:
+        flash('Du har ikke tilladelse til at udføre denne handling.', 'danger')
     return redirect(url_for('admin'))
 
 @app.route('/friends', methods=['GET', 'POST'])
@@ -306,9 +334,4 @@ def which_beer():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        # Create an admin user if it doesn't exist
-        if not User.query.filter_by(username='admin').first():
-            admin_user = User(username='admin', password=generate_password_hash('admin_password', method='pbkdf2:sha256'), is_admin=True)
-            db.session.add(admin_user)
-            db.session.commit()
     app.run(debug=True)
