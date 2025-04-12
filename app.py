@@ -192,8 +192,13 @@ def map():
     if 'user_id' in session:
         user = db.session.get(User, session['user_id'])
         if user:
-            # Hent brugerens egne logs
-            user_logs = BeerLog.query.filter_by(user_id=user.id).all()
+            # Hent alle logs én gang
+            all_logs = BeerLog.query.all()
+
+            # Filtrer brugerens egne logs
+            user_logs = [log for log in all_logs if log.user_id == user.id]
+
+            # Serialiser logs
             user_logs_serializable = [
                 {
                     'latitude': log.latitude,
@@ -203,8 +208,6 @@ def map():
                 } for log in user_logs if log.latitude and log.longitude
             ]
 
-            # Hent alles logs
-            all_logs = BeerLog.query.all()
             all_logs_serializable = [
                 {
                     'latitude': log.latitude,

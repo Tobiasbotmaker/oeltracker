@@ -32,15 +32,16 @@
         
             var currentView = "user"; // Default view is user's logs
             var markers = []; // Array to store markers
+
+            var userLogs = {{ user_logs|tojson }};
+            var allLogs = {{ all_logs|tojson }};
         
             function updateMap(logs) {
-                // Fjern eksisterende markører
                 markers.forEach(function(marker) {
                     map.removeLayer(marker);
                 });
                 markers = [];
-        
-                // Tilføj nye markører
+            
                 logs.forEach(function(log) {
                     if (log.latitude && log.longitude) {
                         var marker = L.marker([log.latitude, log.longitude])
