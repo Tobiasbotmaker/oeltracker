@@ -6,86 +6,151 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        #wheel {
-            width: 300px;
-            height: 300px;
-            border-radius: 50%;
-            border: 5px solid #000;
-            position: relative;
+        #wheel-container {
+            width: 400px;
+            height: 400px;
             margin: 20px auto;
-        }
-        .wheel-segment {
-            width: 50%;
-            height: 50%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform-origin: 0% 0%;
+            position: relative;
+            border: 4px solid black; /* Sort kant */
+            border-radius: 50%; /* Gør kanten rund */
             overflow: hidden;
         }
-        .wheel-segment div {
-            width: 200%;
-            height: 200%;
-            border-radius: 50%;
-            position: absolute;
-            top: -50%;
-            left: -50%;
+        
+        #wheel {
+            transform: rotate(0deg);
+            transition: transform 4s ease-out;
         }
     </style>
     <script>
         let beers = [];
-
+        let colors = []; // Array til at gemme farverne
+        
         function addBeer() {
+            const MAX_BEERS = 10; // Sæt en grænse for antallet af øl
+            if (beers.length >= MAX_BEERS) {
+                alert('Du kan ikke tilføje flere end 10 øl.');
+                return;
+            }
+        
             const beerName = document.getElementById('beerName').value;
             if (beerName) {
                 beers.push(beerName);
+                colors.push(generateRandomColor());
                 document.getElementById('beerName').value = '';
-                updateBeerList();
                 drawWheel();
             }
         }
-
+        
         function removeBeer(index) {
             beers.splice(index, 1);
-            updateBeerList();
-            drawWheel();
+            colors.splice(index, 1); // Fjern også farven for det slettede felt
+            drawWheel(); // Opdater hjulet
         }
-
-        function updateBeerList() {
-            const beerList = document.getElementById('beerList');
-            beerList.innerHTML = '';
-            beers.forEach((beer, index) => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                li.innerHTML = `${beer} <button class="btn btn-danger btn-sm" onclick="removeBeer(${index})">Slet</button>`;
-                beerList.appendChild(li);
-            });
+        
+        function generateRandomColor() {
+            let hue, saturation, lightness;
+            let isSimilar;
+        
+            do {
+                hue = Math.floor(Math.random() * 360); // Tilfældig farve (0-360 grader)
+                saturation = Math.floor(Math.random() * 50) + 80; // Mætning mellem 80% og 100% for mere intensitet
+                lightness = Math.floor(Math.random() * 20) + 40; // Lysstyrke mellem 40% og 60% for mere livlige farver
+        
+                // Tjek om farven er for tæt på en eksisterende farve
+                isSimilar = colors.some(color => {
+                    const [existingHue] = color.match(/\d+/g).map(Number); // Ekstraher hue fra HSL
+                    return Math.abs(existingHue - hue) < 30; // Hvis hue er for tæt på, betragtes den som lignende
+                });
+            } while (isSimilar);
+        
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         }
-
+        
         function drawWheel() {
             const wheel = document.getElementById('wheel');
-            wheel.innerHTML = '';
-            const segmentAngle = 360 / beers.length;
+            wheel.innerHTML = ''; // Ryd tidligere segmenter
+        
+            if (beers.length === 0) {
+                return; // Hvis der ikke er nogen øl, gør ingenting
+            }
+        
+            const segmentAngle = 360 / beers.length; // Beregn vinklen for hvert segment
+            const radius = 150; // Radius for hjulet
+            const centerX = 150; // Center X
+            const centerY = 150; // Center Y
+        
             beers.forEach((beer, index) => {
-                const segment = document.createElement('div');
-                segment.className = 'wheel-segment';
-                segment.style.transform = `rotate(${index * segmentAngle}deg)`;
-                const segmentContent = document.createElement('div');
-                segmentContent.style.backgroundColor = `hsl(${index * segmentAngle}, 100%, 50%)`;
-                segmentContent.innerHTML = `<span style="transform: rotate(-${index * segmentAngle}deg);">${beer}</span>`;
-                segment.appendChild(segmentContent);
-                wheel.appendChild(segment);
+                const startAngle = index * segmentAngle;
+                const endAngle = startAngle + segmentAngle;
+        
+                const startX = centerX + radius * Math.cos((startAngle - 90) * Math.PI / 180);
+                const startY = centerY + radius * Math.sin((startAngle - 90) * Math.PI / 180);
+                const endX = centerX + radius * Math.cos((endAngle - 90) * Math.PI / 180);
+                const endY = centerY + radius * Math.sin((endAngle - 90) * Math.PI / 180);
+        
+                const largeArcFlag = segmentAngle > 180 ? 1 : 0;
+        
+                const pathData = `
+                    M ${centerX} ${centerY}
+                    L ${startX} ${startY}
+                    A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}
+                    Z
+                `;
+        
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("d", pathData);
+                path.setAttribute("fill", colors[index]); // Brug den gemte farve
+                path.setAttribute("stroke", "black"); // Sort kant mellem segmenterne
+                path.setAttribute("stroke-width", "2"); // Tykkelsen på kanten
+                wheel.appendChild(path);
+        
+                const textAngle = startAngle + segmentAngle / 2;
+                const textX = centerX + (radius / 2) * Math.cos((textAngle - 90) * Math.PI / 180);
+                const textY = centerY + (radius / 2) * Math.sin((textAngle - 90) * Math.PI / 180);
+        
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", textX);
+                text.setAttribute("y", textY);
+                text.setAttribute("transform", `rotate(${textAngle} ${textX} ${textY})`);
+                text.setAttribute("fill", "#fff");
+                text.setAttribute("font-size", "12");
+                text.setAttribute("text-anchor", "middle");
+                text.textContent = beer;
+                wheel.appendChild(text);
             });
+        
+            // Hvis der kun er én øl, fyld hele cirklen
+            if (beers.length === 1) {
+                const singleSegment = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                singleSegment.setAttribute("cx", centerX);
+                singleSegment.setAttribute("cy", centerY);
+                singleSegment.setAttribute("r", radius);
+                singleSegment.setAttribute("fill", colors[0]); // Brug den gemte farve
+                singleSegment.setAttribute("stroke", "black"); // Sort kant rundt om cirklen
+                singleSegment.setAttribute("stroke-width", "2"); // Tykkelsen på kanten
+                wheel.appendChild(singleSegment);
+        
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", centerX);
+                text.setAttribute("y", centerY);
+                text.setAttribute("fill", "#fff");
+                text.setAttribute("font-size", "16");
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("dominant-baseline", "middle");
+                text.textContent = beers[0];
+                wheel.appendChild(text);
+            }
         }
 
         function spinWheel() {
             const wheel = document.getElementById('wheel');
             const randomAngle = Math.floor(Math.random() * 360);
-            wheel.style.transition = 'transform 4s ease-out';
-            wheel.style.transform = `rotate(${randomAngle + 360 * 5}deg)`;
+            const totalRotation = randomAngle + 360 * 5; // Tilføj flere rotationer for at simulere spin
+            wheel.style.transform = `rotate(${totalRotation}deg)`;
+        
             setTimeout(() => {
-                const selectedBeer = beers[Math.floor(randomAngle / (360 / beers.length))];
-                alert(`Du skal drikke: ${selectedBeer}`);
+                const selectedIndex = Math.floor((360 - (totalRotation % 360)) / (360 / beers.length)) % beers.length;
+                alert(`Du skal drikke: ${beers[selectedIndex]}`);
             }, 4000);
         }
 
@@ -118,11 +183,14 @@
     <h1 class="mt-5">Hvilken øl skal jeg drikke?</h1>
     <p>Indtast de øl du har derhjemme eller de øl du har overvejet at købe, og lad hjulet vælge for dig</p>
     <div class="form-group">
-        <input type="text" id="beerName" class="form-control" placeholder="Tilføj en øl">
-        <button class="btn btn-primary mt-2" onclick="addBeer()">Tilføj</button>
+        <form onsubmit="addBeer(); return false;">
+            <input type="text" id="beerName" class="form-control" placeholder="Tilføj en øl">
+            <button type="submit" class="btn btn-primary mt-2">Tilføj</button>
+        </form>
     </div>
-    <ul id="beerList" class="list-group mb-3"></ul>
-    <div id="wheel"></div>
+    <div id="wheel-container">
+        <svg id="wheel" viewBox="0 0 300 300"></svg>
+    </div>
     <button class="btn btn-success mt-3" onclick="spinWheel()">Spin the Wheel</button><br>
     <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
