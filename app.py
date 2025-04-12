@@ -46,7 +46,7 @@ def index():
         if user:
             # Beregn nødvendige data
             total_beers = sum(beer.count for beer in user.beers)
-            last_beer_time = user.beers[-1].timestamp if user.beers else None
+            last_beer_time = user.beers[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if user.beers else None
             total_beers_ever = BeerLog.query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
             is_new_user = session.pop('is_new_user', False)  # Hent og fjern 'is_new_user' fra sessionen
 
@@ -54,7 +54,7 @@ def index():
                 'index.html',
                 username=user.username,
                 total_beers=total_beers,
-                last_beer_time=last_beer_time,
+                last_beer_time=last_beer_time,  # Send som formateret streng
                 is_admin=user.is_admin,
                 total_beers_ever=total_beers_ever,
                 is_new_user=is_new_user
@@ -180,6 +180,8 @@ def friends():
         user = db.session.get(User, session['user_id'])
         if not user:
             return redirect(url_for('login'))
+        
+        # Hent brugerens venner
         friends = []
         for friendship in user.friendships:
             friend = friendship.friend
@@ -190,14 +192,14 @@ def friends():
                 'id': friend.id,
                 'username': friend.username,
                 'total_beers': total_beers,
-                'last_beer_time': last_beer_time
+                'last_beer_time': last_beer_time  # Send som formateret streng
             })
         
+        # Håndter søgning
         search_results = []
         if request.method == 'POST':
             search_username = request.form['username']
-            search_results = User.query.filter(User.username.like(f'%{search_username}%')).all()
-            # Filter out friends from search results
+            search_results = User.query.filter(User.username.ilike(f'%{search_username}%')).all()
             friend_ids = [friend['id'] for friend in friends]
             search_results = [result for result in search_results if result.id != user.id and result.id not in friend_ids]
         

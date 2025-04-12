@@ -10,7 +10,7 @@
             // Tjek og anvend tema
             var theme = localStorage.getItem('theme');
             if (!theme) {
-                theme = 'dag';
+                theme = 'classic'; // Standard tema
                 localStorage.setItem('theme', theme);
             }
             document.body.className = theme + '-theme';

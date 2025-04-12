@@ -49,6 +49,8 @@
                 {{ friend.username }} - Øl drukket: {{ friend.total_beers }}
                 {% if friend.last_beer_time %}
                     - Sidste øl drukket: {{ friend.last_beer_time }}
+                {% else %}
+                    - Ingen øl drukket endnu
                 {% endif %}
             </span>
         </li>

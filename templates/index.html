@@ -96,23 +96,11 @@
         
             var theme = localStorage.getItem('theme');
             if (!theme) {
-                theme = 'dag';
+                theme = 'classic';
                 localStorage.setItem('theme', theme);
             }
             document.body.className = theme + '-theme';
         };
-        
-        function requestLocationPermission() {
-            var result = confirm("Vil du give tilladelse til at bruge din lokalitet for at vise, hvor du drak øllene? Du kan altid ændre dette senere på indstillingssiden.");
-            if (result) {
-                // Hvis brugeren accepterer
-                localStorage.setItem('locationPermission', 'granted');
-            } else {
-                // Hvis brugeren afviser
-                localStorage.setItem('locationPermission', 'denied');
-                alert("Du kan ændre denne indstilling senere på indstillingssiden.");
-            }
-        }
     </script>
 </head>
 <body class="container d-flex flex-column">
@@ -138,8 +126,10 @@
         <p class="beer-text">Antal øl du har drukket: {{ total_beers }}</p>
         {% if last_beer_time %}
             <p class="beer-text">Sidste øl du har drukket: {{ last_beer_time }}</p>
+        {% else %}
+            <p class="beer-text">Ingen øl drukket endnu</p>
         {% endif %}
-        <p class="beer-text">Antal øl drukket af alle bruger i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
+        <p class="beer-text">Antal øl drukket af alle brugere i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
         <form id="addBeerForm" action="{{ url_for('add_beer') }}" method="post" class="mb-3">
             <button type="button" class="btn btn-success" onclick="addBeer()">Registrer øl</button>
         </form>
