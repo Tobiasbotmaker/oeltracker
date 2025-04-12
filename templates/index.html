@@ -77,7 +77,7 @@
 
         window.onload = function() {
             var locationPermission = localStorage.getItem('locationPermission');
-            if (!locationPermission) {
+            if (!locationPermission || is_new_user) { // Spørg om lokalitet, hvis det er en ny bruger
                 requestLocationPermission();
             }
 
