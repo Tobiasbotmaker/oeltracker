@@ -25,25 +25,27 @@
             console.log("Initializing map...");
             var defaultLocation = [56.2639, 9.5018]; // Default location (Denmark)
             var map = L.map('map').setView(defaultLocation, 6); // Adjust zoom level as needed
-        
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
-        
+
             var currentView = "user"; // Default view is user's logs
             var markers = []; // Array to store markers
 
             var userLogs = {{ user_logs|tojson }};
+            var friendsLogs = {{ friends_logs|tojson }};
             var allLogs = {{ all_logs|tojson }};
-        
+
             function updateMap(logs) {
-            
+                console.log("Opdaterer kortet med logs:", logs);
+
                 // Fjern eksisterende markører
                 markers.forEach(function(marker) {
                     map.removeLayer(marker);
                 });
                 markers = [];
-            
+
                 // Gruppér logs baseret på koordinater
                 var groupedLogs = {};
                 logs.forEach(function(log) {
@@ -59,7 +61,7 @@
                         groupedLogs[key].count += log.count;
                     }
                 });
-            
+
                 // Opret markører for hvert sted
                 Object.values(groupedLogs).forEach(function(group) {
                     var marker = L.marker([group.latitude, group.longitude])
@@ -68,37 +70,55 @@
                     markers.push(marker);
                 });
             }
-        
+
+            // Opdater teksten for visningen
+            function updateViewText() {
+                var viewText = document.getElementById("viewText");
+                if (currentView === "user") {
+                    viewText.textContent = "Viser mine pile";
+                } else if (currentView === "friends") {
+                    viewText.textContent = "Viser venners pile";
+                } else if (currentView === "all") {
+                    viewText.textContent = "Viser alles pile";
+                }
+            }
+
             // Start med at vise brugerens egne logs
             updateMap(userLogs);
-        
+            updateViewText();
+
             // Håndter knapklik for at skifte visning
             document.getElementById("toggleViewButton").addEventListener("click", function() {
                 if (currentView === "user") {
+                    currentView = "friends";
+                    updateMap(friendsLogs);
+                    this.textContent = "Vis alles pile"; // Opdater tekst til næste visning
+                } else if (currentView === "friends") {
                     currentView = "all";
                     updateMap(allLogs);
-                    this.textContent = "Vis kun mine pile";
+                    this.textContent = "Vis kun mine pile"; // Opdater tekst til næste visning
                 } else {
                     currentView = "user";
                     updateMap(userLogs);
-                    this.textContent = "Vis alles pile";
+                    this.textContent = "Vis venners pile"; // Opdater tekst til næste visning
                 }
+                updateViewText(); // Opdater teksten for visningen
             });
         }
-        
+
         window.onload = function() {
             var locationPermission = localStorage.getItem('locationPermission');
             if (!locationPermission) {
                 requestLocationPermission();
             }
-        
+
             var theme = localStorage.getItem('theme');
             if (!theme) {
                 theme = 'dag';
                 localStorage.setItem('theme', theme);
             }
             document.body.className = theme + '-theme';
-        
+
             // Initialiser kortet
             initMap();
         };
@@ -124,7 +144,10 @@
     <br>
     <h1 class="mt-5">Kort</h1>
     <div id="map" class="mb-3"></div>
-    <button id="toggleViewButton" class="btn btn-primary">Vis alles pile</button>
+    <div class="d-flex align-items-center">
+        <button id="toggleViewButton" class="btn btn-primary">Vis alles pile</button>
+        <span id="viewText" class="ml-3">Viser mine pile</span>
+    </div>
     <br>
     <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
 </body>

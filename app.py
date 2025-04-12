@@ -198,6 +198,10 @@ def map():
             # Filtrer brugerens egne logs
             user_logs = [log for log in all_logs if log.user_id == user.id]
 
+            # Filtrer logs for brugerens venner
+            friends = [friendship.friend for friendship in user.friendships]
+            friends_logs = [log for log in all_logs if log.user_id in [friend.id for friend in friends]]
+
             # Serialiser logs
             user_logs_serializable = [
                 {
@@ -206,6 +210,15 @@ def map():
                     'count': log.count,
                     'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
                 } for log in user_logs if log.latitude and log.longitude
+            ]
+
+            friends_logs_serializable = [
+                {
+                    'latitude': log.latitude,
+                    'longitude': log.longitude,
+                    'count': log.count,
+                    'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                } for log in friends_logs if log.latitude and log.longitude
             ]
 
             all_logs_serializable = [
@@ -217,7 +230,12 @@ def map():
                 } for log in all_logs if log.latitude and log.longitude
             ]
 
-            return render_template('map.html', user_logs=user_logs_serializable, all_logs=all_logs_serializable)
+            return render_template(
+                'map.html',
+                user_logs=user_logs_serializable,
+                friends_logs=friends_logs_serializable,
+                all_logs=all_logs_serializable
+            )
     return redirect(url_for('login'))
 
 @app.route('/settings')

@@ -12,6 +12,16 @@
                 document.body.className = theme + '-theme';
             }
         };
+
+        function copyToClipboard(text) {
+            // Brug Clipboard API til at kopiere teksten
+            navigator.clipboard.writeText(text).then(function() {
+                alert("E-mail kopieret til udklipsholderen!");
+            }).catch(function(error) {
+                console.error("Kunne ikke kopiere e-mailen: ", error);
+                alert("Kunne ikke kopiere e-mailen. Prøv igen.");
+            });
+        }
     </script>
 </head>
 <body class="container d-flex flex-column">
@@ -40,7 +50,14 @@
     </div>
     <div class="flex-grow-1">
         <h1 class="mt-5">Kontakt</h1>
-        <p>Hvis du oplever nogle fejl ved siden kan du kontakte os på vores mail: ØlSpillet@gmail.com</p>
+        <p>
+            Hvis du oplever nogle fejl ved siden kan du kontakte os på vores mail: 
+            <span 
+                style="cursor: pointer; color: blue; text-decoration: underline;" 
+                onclick="copyToClipboard('ØlSpillet@gmail.com')">
+                ØlSpillet@gmail.com
+            </span>
+        </p>
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
     </div>
 </body>
