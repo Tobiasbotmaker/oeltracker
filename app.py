@@ -48,7 +48,19 @@ def index():
             total_beers = sum(log.count for log in beer_logs)
             last_beer_time = beer_logs[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if beer_logs else None
             total_beers_ever = db.session.query(db.func.sum(BeerLog.count)).scalar() or 0
-            return render_template('index.html', username=user.username, total_beers=total_beers, last_beer_time=last_beer_time, is_admin=user.is_admin, total_beers_ever=total_beers_ever)
+            
+            # Tjek om brugeren er ny
+            is_new_user = request.args.get('is_new_user', False)
+            
+            return render_template(
+                'index.html',
+                username=user.username,
+                total_beers=total_beers,
+                last_beer_time=last_beer_time,
+                is_admin=user.is_admin,
+                total_beers_ever=total_beers_ever,
+                is_new_user=is_new_user
+            )
     return redirect(url_for('register'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -71,8 +83,8 @@ def register():
         # Log brugeren ind
         session['user_id'] = new_user.id
         
-        # Send brugeren til index-siden
-        return redirect(url_for('index'))
+        # Send brugeren til index-siden med en indikator for, at det er en ny bruger
+        return redirect(url_for('index', is_new_user=True))
     
     return render_template('register.html')
 

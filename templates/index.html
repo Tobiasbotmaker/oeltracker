@@ -58,29 +58,39 @@
         function requestLocationPermission() {
             var result = confirm("Vil du give tilladelse til at bruge din lokalitet for at vise, hvor du drak øllene? Du kan altid ændre dette senere på indstillingssiden.");
             if (result) {
+                // Gem tilladelsen med det samme
+                localStorage.setItem('locationPermission', 'granted');
+        
+                // Prøv at hente lokationen, men ændr ikke indstillingen ved fejl
                 if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        localStorage.setItem('locationPermission', 'granted');
-                    }, function(error) {
-                        alert("Din lokalitet er ikke tilgængelig i øjeblikket.");
-                        localStorage.setItem('locationPermission', 'denied');
-                    });
+                    navigator.geolocation.getCurrentPosition(
+                        function (position) {
+                            alert("Lokation fundet!");
+                        },
+                        function (error) {
+                            // Lokationen kan ikke findes, men tilladelsen er stadig givet
+                            alert("Din lokalitet er ikke tilgængelig i øjeblikket, men tilladelsen er givet.");
+                        }
+                    );
                 } else {
-                    alert("Geolocation understøttes ikke af denne browser.");
-                    localStorage.setItem('locationPermission', 'unsupported');
+                    alert("Geolocation understøttes ikke af denne browser, men tilladelsen er givet.");
                 }
             } else {
+                // Hvis brugeren nægter tilladelse
                 alert("Du kan ændre denne indstilling senere på indstillingssiden.");
                 localStorage.setItem('locationPermission', 'denied');
             }
         }
 
-        window.onload = function() {
+        window.onload = function () {
             var locationPermission = localStorage.getItem('locationPermission');
-            if (!locationPermission || is_new_user) { // Spørg om lokalitet, hvis det er en ny bruger
+            var isNewUser = {{ is_new_user|tojson }}; // Variabel fra backend
+        
+            // Spørg om lokationstilladelse, hvis det er en ny bruger, eller hvis der ikke er nogen gemt værdi
+            if (!locationPermission || isNewUser) {
                 requestLocationPermission();
             }
-
+        
             var theme = localStorage.getItem('theme');
             if (!theme) {
                 theme = 'dag';

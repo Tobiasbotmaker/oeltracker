@@ -7,30 +7,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>
         window.onload = function() {
-            // Tjek om temaet allerede er gemt i localStorage
+            // Tjek og anvend tema
             var theme = localStorage.getItem('theme');
             if (!theme) {
-                // Hvis der ikke er noget tema, sæt default til "dag"
                 theme = 'dag';
                 localStorage.setItem('theme', theme);
             }
-            // Anvend temaet på body
             document.body.className = theme + '-theme';
-    
-            // Opdater tema-vælgeren, hvis den findes
+        
             var themeSelect = document.getElementById('themeSelect');
             if (themeSelect) {
                 themeSelect.value = theme;
             }
-    
+        
             // Håndter lokationsadgang
             var locationAccess = localStorage.getItem('locationPermission');
             if (locationAccess === 'granted') {
                 document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
                 document.getElementById('locationStatus').innerText = 'Status: Tilladt';
-            } else {
+            } else if (locationAccess === 'denied') {
                 document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
                 document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
+            } else {
+                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
+                document.getElementById('locationStatus').innerText = 'Status: Ikke valgt';
             }
         };
 
@@ -44,13 +44,37 @@
         function toggleLocationAccess() {
             var locationAccess = localStorage.getItem('locationPermission');
             if (locationAccess === 'granted') {
-                localStorage.setItem('locationPermission', 'denied');
-                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
-                document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
+                // Brugeren vælger at slå lokationsadgang fra
+                var confirmResult = confirm("Er du sikker på, at du vil slå lokationsadgang fra?");
+                if (confirmResult) {
+                    localStorage.setItem('locationPermission', 'denied');
+                    document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
+                    document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
+                }
             } else {
-                localStorage.setItem('locationPermission', 'granted');
-                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
-                document.getElementById('locationStatus').innerText = 'Status: Tilladt';
+                // Brugeren vælger at slå lokationsadgang til
+                var confirmResult = confirm("Vil du give tilladelse til at bruge din lokalitet?");
+                if (confirmResult) {
+                    // Gem tilladelsen med det samme
+                    localStorage.setItem('locationPermission', 'granted');
+                    document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
+                    document.getElementById('locationStatus').innerText = 'Status: Tilladt';
+        
+                    // Prøv at hente lokationen, men ændr ikke indstillingen ved fejl
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            function (position) {
+                                alert("Lokation fundet!");
+                            },
+                            function (error) {
+                                // Lokationen kan ikke findes, men tilladelsen er stadig givet
+                                alert("Din lokalitet er ikke tilgængelig i øjeblikket, men tilladelsen er givet.");
+                            }
+                        );
+                    } else {
+                        alert("Geolocation understøttes ikke af denne browser, men tilladelsen er givet.");
+                    }
+                }
             }
         }
     </script>
