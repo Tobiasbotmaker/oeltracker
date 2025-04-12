@@ -48,15 +48,24 @@ def index():
             total_beers = sum(beer.count for beer in user.beers)
             last_beer_time = user.beers[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if user.beers else None
             total_beers_ever = BeerLog.query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
+
+            # Beregn øl drukket af brugeren og deres venner
+            friends_beers = 0
+            for friendship in user.friendships:
+                friend = friendship.friend
+                friends_beers += sum(beer.count for beer in friend.beers)
+            total_user_and_friends_beers = total_beers + friends_beers
+
             is_new_user = session.pop('is_new_user', False)  # Hent og fjern 'is_new_user' fra sessionen
 
             return render_template(
                 'index.html',
                 username=user.username,
                 total_beers=total_beers,
-                last_beer_time=last_beer_time,  # Send som formateret streng
+                last_beer_time=last_beer_time,
                 is_admin=user.is_admin,
                 total_beers_ever=total_beers_ever,
+                total_user_and_friends_beers=total_user_and_friends_beers,
                 is_new_user=is_new_user
             )
     return redirect(url_for('register'))

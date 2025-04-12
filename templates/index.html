@@ -129,6 +129,7 @@
         {% else %}
             <p class="beer-text">Ingen øl drukket endnu</p>
         {% endif %}
+        <p class="beer-text">Du og dine venner har i alt drukket {{ total_user_and_friends_beers }} øl</p>
         <p class="beer-text">Antal øl drukket af alle brugere i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
         <form id="addBeerForm" action="{{ url_for('add_beer') }}" method="post" class="mb-3">
             <button type="button" class="btn btn-success" onclick="addBeer()">Registrer øl</button>
