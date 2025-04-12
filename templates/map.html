@@ -25,48 +25,64 @@
             console.log("Initializing map...");
             var defaultLocation = [56.2639, 9.5018]; // Default location (Denmark)
             var map = L.map('map').setView(defaultLocation, 6); // Adjust zoom level as needed
-
+        
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
-
-            var beerLogs = {{ beer_logs|tojson }};
-            console.log("Beer logs:", beerLogs);
-
-            beerLogs.forEach(function(log) {
-                if (log.latitude && log.longitude) {
-                    L.marker([log.latitude, log.longitude])
-                        .addTo(map)
-                     .bindPopup("Antal øl drukket her: " + log.count);
-                }
-        });
-
-            if (beerLogs.length === 0) {
-                console.log("No location data available yet.");
-            } else {
-                var groupedLogs = {};
-                beerLogs.forEach(function(log) {
-                    var key = log.latitude + ',' + log.longitude;
-                    if (!groupedLogs[key]) {
-                        groupedLogs[key] = { count: 0, latitude: log.latitude, longitude: log.longitude };
+        
+            var currentView = "user"; // Default view is user's logs
+            var markers = []; // Array to store markers
+        
+            function updateMap(logs) {
+                // Fjern eksisterende markører
+                markers.forEach(function(marker) {
+                    map.removeLayer(marker);
+                });
+                markers = [];
+        
+                // Tilføj nye markører
+                logs.forEach(function(log) {
+                    if (log.latitude && log.longitude) {
+                        var marker = L.marker([log.latitude, log.longitude])
+                            .addTo(map)
+                            .bindPopup("Antal øl drukket her: " + log.count);
+                        markers.push(marker);
                     }
-                    groupedLogs[key].count += log.count;
-                });
-
-                Object.values(groupedLogs).forEach(function(group) {
-                    L.marker([group.latitude, group.longitude])
-                        .addTo(map)
-                        .bindPopup("Antal øl drukket her: " + group.count);
                 });
             }
+        
+            // Start med at vise brugerens egne logs
+            updateMap(userLogs);
+        
+            // Håndter knapklik for at skifte visning
+            document.getElementById("toggleViewButton").addEventListener("click", function() {
+                if (currentView === "user") {
+                    currentView = "all";
+                    updateMap(allLogs);
+                    this.textContent = "Vis kun mine pile";
+                } else {
+                    currentView = "user";
+                    updateMap(userLogs);
+                    this.textContent = "Vis alles pile";
+                }
+            });
         }
-
+        
         window.onload = function() {
-            initMap();
-            var theme = localStorage.getItem('theme');
-            if (theme) {
-                document.body.className = theme + '-theme';
+            var locationPermission = localStorage.getItem('locationPermission');
+            if (!locationPermission) {
+                requestLocationPermission();
             }
+        
+            var theme = localStorage.getItem('theme');
+            if (!theme) {
+                theme = 'dag';
+                localStorage.setItem('theme', theme);
+            }
+            document.body.className = theme + '-theme';
+        
+            // Initialiser kortet
+            initMap();
         };
     </script>
 </head>
@@ -87,8 +103,11 @@
             </div>
         </div>
     </nav>
+    <br>
     <h1 class="mt-5">Kort</h1>
     <div id="map" class="mb-3"></div>
+    <button id="toggleViewButton" class="btn btn-primary">Vis alles pile</button>
+    <br>
     <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
 </body>
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>

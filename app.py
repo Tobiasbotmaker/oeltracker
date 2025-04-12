@@ -192,16 +192,29 @@ def map():
     if 'user_id' in session:
         user = db.session.get(User, session['user_id'])
         if user:
-            beer_logs = BeerLog.query.filter_by(user_id=user.id).all()
-            beer_logs_serializable = [
+            # Hent brugerens egne logs
+            user_logs = BeerLog.query.filter_by(user_id=user.id).all()
+            user_logs_serializable = [
                 {
                     'latitude': log.latitude,
                     'longitude': log.longitude,
-                    'count': log.count,  # Tilføj count her
+                    'count': log.count,
                     'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                } for log in beer_logs if log.latitude and log.longitude
+                } for log in user_logs if log.latitude and log.longitude
             ]
-            return render_template('map.html', beer_logs=beer_logs_serializable)
+
+            # Hent alles logs
+            all_logs = BeerLog.query.all()
+            all_logs_serializable = [
+                {
+                    'latitude': log.latitude,
+                    'longitude': log.longitude,
+                    'count': log.count,
+                    'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                } for log in all_logs if log.latitude and log.longitude
+            ]
+
+            return render_template('map.html', user_logs=user_logs_serializable, all_logs=all_logs_serializable)
     return redirect(url_for('login'))
 
 @app.route('/settings')
