@@ -1,16 +1,22 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 import os
 import logging
+from PIL import Image
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__, static_folder='static')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://beer_game_db_user:hMVeKc07Z2hLBMs28p9cllxyglWMNqxy@dpg-cvslpd7diees73fj3mkg-a.frankfurt-postgres.render.com/beer_game_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Slå ændringssporing fra (for performance)
 app.config['SECRET_KEY'] = 'CIpFfzd/lCsLNdeBtZ9sxGkS8gkkFz3w'
+app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pictures'
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -31,6 +37,8 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     beers = db.relationship('BeerLog', backref='user', lazy=True)
     __table_args__ = {'extend_existing': True}
+    profile_picture = db.Column(db.String(300), nullable=True)  # Sti til profilbillede
+    default_profile_picture = 'static/icon-5355896_640.png'
     
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -60,6 +68,7 @@ def index():
 
             return render_template(
                 'index.html',
+                user=user,  # Send hele user-objektet til skabelonen
                 username=user.username,
                 total_beers=total_beers,
                 last_beer_time=last_beer_time,
@@ -69,6 +78,57 @@ def index():
                 is_new_user=is_new_user
             )
     return redirect(url_for('register'))
+
+@app.route('/upload_profile_picture', methods=['POST'])
+def upload_profile_picture():
+    if 'user_id' in session:
+        user = db.session.get(User, session['user_id'])
+        if 'profile_picture' not in request.files:
+            flash('Ingen fil valgt.', 'warning')
+            return redirect(url_for('index'))
+        
+        file = request.files['profile_picture']
+        if file.filename == '':
+            flash('Ingen fil valgt.', 'warning')
+            return redirect(url_for('index'))
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            try:
+                # Slet det gamle profilbillede, hvis det findes, og ikke er standardbilledet
+                if user.profile_picture and user.profile_picture != 'static/icon-5355896_640.png':
+                    old_filepath = os.path.join(os.getcwd(), user.profile_picture)
+                    if os.path.exists(old_filepath):
+                        os.remove(old_filepath)
+                
+                # Gem den nye fil
+                file.save(filepath)
+                
+                # Åbn billedet og gør det mindre
+                with Image.open(filepath) as img:
+                    img = img.convert("RGB")  # Sikrer, at billedet er i RGB-format
+                    img.thumbnail((300, 300))  # Sæt maks. størrelse til 300x300 pixels
+                    img.save(filepath, "JPEG", quality=85)  # Gem som JPEG med 85% kvalitet
+                
+                # Opdater brugerens profilbillede i databasen
+                user.profile_picture = filepath
+                db.session.commit()
+                
+                flash('Profilbillede opdateret!', 'success')
+            except Exception as e:
+                # Hvis der opstår en fejl (f.eks. forkert format)
+                app.logger.error(f"Fejl under upload af profilbillede: {e}")
+                flash('Formatet på billedet understøttes ikke. Prøv igen med en PNG, JPG eller JPEG.', 'danger')
+                return redirect(url_for('index'))
+            
+            return redirect(url_for('index'))
+        else:
+            flash('Formatet på billedet understøttes ikke. Prøv igen med en PNG, JPG eller JPEG.', 'danger')
+            return redirect(url_for('index'))
+    flash('Du skal være logget ind for at uploade et billede.', 'danger')
+    return redirect(url_for('login'))
 
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
@@ -316,10 +376,14 @@ def leaderboard():
             total_beers = query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
             leaderboard_data.append({
                 'username': user.username,
+                'profile_picture': user.profile_picture,  # Inkluder profilbillede
                 'total_beers': total_beers
             })
         leaderboard_data.sort(key=lambda x: x['total_beers'], reverse=True)
         return leaderboard_data[:10]  # Limit to top 10 users
+
+    # Beregn det samlede antal brugere
+    total_users = User.query.count()  # Tæl antallet af brugere i databasen
 
     top_10_all_time = get_leaderboard_data()
     top_10_24_hours = get_leaderboard_data(timedelta(days=1))
@@ -327,12 +391,15 @@ def leaderboard():
     top_10_month = get_leaderboard_data(timedelta(days=30))
     top_10_year = get_leaderboard_data(timedelta(days=365))
 
-    return render_template('leaderboard.html', 
-                           top_10_all_time=top_10_all_time,
-                           top_10_24_hours=top_10_24_hours,
-                           top_10_week=top_10_week,
-                           top_10_month=top_10_month,
-                           top_10_year=top_10_year)
+    return render_template(
+        'leaderboard.html', 
+        total_users=total_users,  # Send antallet af brugere til skabelonen
+        top_10_all_time=top_10_all_time,
+        top_10_24_hours=top_10_24_hours,
+        top_10_week=top_10_week,
+        top_10_month=top_10_month,
+        top_10_year=top_10_year
+    )
     
 @app.route('/about')
 def about():

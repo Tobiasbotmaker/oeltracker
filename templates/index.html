@@ -20,6 +20,29 @@
             }
         }
 
+        function openPopup() {
+            document.getElementById("profilePopup").style.display = "block";
+        }
+    
+        function closePopup() {
+            document.getElementById("profilePopup").style.display = "none";
+        }
+    
+        // Luk popup, hvis brugeren klikker uden for den
+        window.onclick = function(event) {
+            var popup = document.getElementById("profilePopup");
+            if (event.target == popup) {
+                popup.style.display = "none";
+            }
+        }
+
+        setTimeout(function() {
+            var flashContainer = document.querySelector('.flash-container');
+            if (flashContainer) {
+                flashContainer.style.display = 'none';
+            }
+        }, 3000); // 3000 ms = 3 sekunder
+
         function addBeer() {
             var audio = new Audio('/static/click-sound.mp3');
             audio.play();
@@ -104,20 +127,59 @@
     </script>
 </head>
 <body class="container d-flex flex-column">
-    <nav class="navbar fixed-top">
-        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
-        <div class="dropdown">
-            <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
-                <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
-                <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
-                <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-                <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
-                <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        <div class="flash-message">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" role="alert">
+              {{ message }}
             </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+    <nav class="navbar fixed-top d-flex justify-content-between">
+        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
+        <div class="d-flex align-items-center">
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
+                    <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
+                    <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
+                    <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
+                    <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
+                    <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
+                    <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
+                </div>
+            </div>
+            <img 
+            src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+            alt="Profilbillede" 
+            class="profile-picture"
+            id="profilePicture"
+            onclick="openPopup()" 
+        >
+        <div id="profilePopup" class="popup">
+            <div class="popup-content">
+                <span class="close" onclick="closePopup()">&times;</span>
+                <img 
+                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                    alt="Profilbillede" 
+                    class="popup-profile-picture"
+                >
+                <form id="uploadForm" action="{{ url_for('upload_profile_picture') }}" method="POST" enctype="multipart/form-data">
+                    <input type="file" id="fileInput" name="profile_picture" accept="image/*" class="form-control mb-3">
+                    <button type="submit" class="btn btn-primary">Upload billede</button>
+                </form>
+            </div>
+        </div>
+        <form id="uploadForm" action="{{ url_for('upload_profile_picture') }}" method="POST" enctype="multipart/form-data" style="display: none;">
+            <input type="file" id="fileInput" name="profile_picture" accept="image/*" onchange="document.getElementById('uploadForm').submit()">
+        </form>
         </div>
     </nav>
     <div class="flex-grow-1 beer-background">

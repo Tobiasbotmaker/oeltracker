@@ -9,7 +9,102 @@ body.dag-theme {
     color: #212529; /* Mørk tekst */
 }
 
+/* Popup baggrund */
+.popup {
+    display: none; /* Skjult som standard */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5); /* Halvgennemsigtig sort baggrund */
+}
+
+/* Popup indhold */
+.popup-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 400px;
+    text-align: center;
+    border-radius: 10px;
+}
+
+/* Luk-knap */
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Profilbillede i popup */
+.popup-profile-picture {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 20px;
+}
+
 /* Resten af dine temaer forbliver uændrede */
+
+.profile-picture {
+    width: 40px; /* Juster størrelsen */
+    height: 40px; /* Juster størrelsen */
+    border-radius: 50%; /* Gør billedet rundt */
+    object-fit: cover; /* Sørg for, at billedet fylder hele rammen */
+    border: 2px solid #fff; /* Valgfri kant */
+    margin-left: 10px; /* Lidt afstand fra dropdown-menuen */
+}
+
+.leaderboard-profile-picture {
+    width: 40px; /* Juster størrelsen */
+    height: 40px; /* Juster størrelsen */
+    border-radius: 50%; /* Gør billedet rundt */
+    object-fit: cover; /* Sørg for, at billedet fylder hele rammen */
+    margin-right: 10px; /* Lidt afstand fra brugernavnet */
+    vertical-align: middle; /* Juster billedet med teksten */
+}
+
+.flash-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1050; /* Sørg for, at beskeden vises over alt andet */
+    background-color: rgba(0, 0, 0, 0.5); /* Halvgennemsigtig baggrund */
+}
+
+.flash-message {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+.alert {
+    margin: 0;
+}
 
 /* Classic Theme */
 .classic-theme {

@@ -34,6 +34,7 @@
     <br>
 
     <h1 class="mt-5">Leaderboard</h1>
+    <p class="text-muted">Der er {{ total_users }} brugere i alt på siden.</p>
 
     <div class="mb-5">
         <h2 class="mt-4">Flest øl drukket nogensinde</h2>
@@ -49,7 +50,14 @@
                     {% for user in top_10_all_time %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td>{{ user.username }}</td>
+                        <td>
+                            <img 
+                                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                                alt="Profilbillede" 
+                                class="leaderboard-profile-picture"
+                            >
+                            {{ user.username }}
+                        </td>
                         <td>{{ user.total_beers }}</td>
                     </tr>
                     {% endfor %}
@@ -72,7 +80,14 @@
                     {% for user in top_10_24_hours %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td>{{ user.username }}</td>
+                        <td>
+                            <img 
+                                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                                alt="Profilbillede" 
+                                class="leaderboard-profile-picture"
+                            >
+                            {{ user.username }}
+                        </td>
                         <td>{{ user.total_beers }}</td>
                     </tr>
                     {% endfor %}
@@ -95,7 +110,14 @@
                     {% for user in top_10_week %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td>{{ user.username }}</td>
+                        <td>
+                            <img 
+                                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                                alt="Profilbillede" 
+                                class="leaderboard-profile-picture"
+                            >
+                            {{ user.username }}
+                        </td>
                         <td>{{ user.total_beers }}</td>
                     </tr>
                     {% endfor %}
@@ -118,7 +140,14 @@
                     {% for user in top_10_month %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td>{{ user.username }}</td>
+                        <td>
+                            <img 
+                                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                                alt="Profilbillede" 
+                                class="leaderboard-profile-picture"
+                            >
+                            {{ user.username }}
+                        </td>
                         <td>{{ user.total_beers }}</td>
                     </tr>
                     {% endfor %}
@@ -141,7 +170,14 @@
                     {% for user in top_10_year %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td>{{ user.username }}</td>
+                        <td>
+                            <img 
+                                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                                alt="Profilbillede" 
+                                class="leaderboard-profile-picture"
+                            >
+                            {{ user.username }}
+                        </td>
                         <td>{{ user.total_beers }}</td>
                     </tr>
                     {% endfor %}
