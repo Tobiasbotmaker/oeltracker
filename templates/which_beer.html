@@ -144,14 +144,22 @@
 
         function spinWheel() {
             const wheel = document.getElementById('wheel');
-            const randomAngle = Math.floor(Math.random() * 360);
-            const totalRotation = randomAngle + 360 * 5; // Tilføj flere rotationer for at simulere spin
+            const randomAngle = Math.floor(Math.random() * 360); // Tilfældig vinkel mellem 0 og 360
+            const baseRotations = 5; // Minimum antal fulde rotationer
+            const totalRotation = randomAngle + 360 * baseRotations; // Tilføj fulde rotationer
+            const spinDuration = 4; // Fast varighed i sekunder
+        
+            // Indstil CSS-transitionens varighed
+            wheel.style.transition = `transform ${spinDuration}s ease-out`;
+        
+            // Anvend rotationen
             wheel.style.transform = `rotate(${totalRotation}deg)`;
         
+            // Beregn det valgte segment efter animationen
             setTimeout(() => {
                 const selectedIndex = Math.floor((360 - (totalRotation % 360)) / (360 / beers.length)) % beers.length;
                 alert(`Du skal drikke: ${beers[selectedIndex]}`);
-            }, 4000);
+            }, spinDuration * 1000); // Vent til animationen er færdig
         }
 
         window.onload = function() {
