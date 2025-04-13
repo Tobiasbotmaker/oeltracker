@@ -7,18 +7,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         #wheel-container {
-            width: 400px;
-            height: 400px;
+            width: 380px;
+            height: 380px;
             margin: 20px auto;
             position: relative;
             border: 4px solid black; /* Sort kant */
             border-radius: 50%; /* Gør kanten rund */
             overflow: hidden;
         }
-        
+    
         #wheel {
             transform: rotate(0deg);
             transition: transform 4s ease-out;
+        }
+    
+        #wheel-pointer {
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 20px solid red; /* Pilens farve */
+            position: absolute;
+            top: -10px; /* Placer pilen lige over hjulet */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10; /* Sørg for, at pilen er over hjulet */
         }
     </style>
     <script>
@@ -149,17 +162,24 @@
             const totalRotation = randomAngle + 360 * baseRotations; // Tilføj fulde rotationer
             const spinDuration = 4; // Fast varighed i sekunder
         
-            // Indstil CSS-transitionens varighed
-            wheel.style.transition = `transform ${spinDuration}s ease-out`;
+            // Nulstil transition midlertidigt for at sikre ensartet animation
+            wheel.style.transition = 'none';
+            wheel.style.transform = `rotate(0deg)`; // Nulstil rotationen
         
-            // Anvend rotationen
-            wheel.style.transform = `rotate(${totalRotation}deg)`;
-        
-            // Beregn det valgte segment efter animationen
+            // Tving browseren til at genberegne stilen (reflow)
             setTimeout(() => {
-                const selectedIndex = Math.floor((360 - (totalRotation % 360)) / (360 / beers.length)) % beers.length;
-                alert(`Du skal drikke: ${beers[selectedIndex]}`);
-            }, spinDuration * 1000); // Vent til animationen er færdig
+                // Indstil CSS-transitionens varighed
+                wheel.style.transition = `transform ${spinDuration}s ease-out`;
+        
+                // Anvend rotationen
+                wheel.style.transform = `rotate(${totalRotation}deg)`;
+        
+                // Beregn det valgte segment efter animationen
+                setTimeout(() => {
+                    const selectedIndex = Math.floor((360 - (totalRotation % 360)) / (360 / beers.length)) % beers.length;
+                    alert(`Du skal drikke: ${beers[selectedIndex]}`);
+                }, spinDuration * 1000); // Vent til animationen er færdig
+            }, 50); // Giv browseren tid til at nulstille stilen
         }
 
         window.onload = function() {
@@ -197,6 +217,7 @@
         </form>
     </div>
     <div id="wheel-container">
+        <div id="wheel-pointer"></div> <!-- Pil til at indikere valg -->
         <svg id="wheel" viewBox="0 0 300 300"></svg>
     </div>
     <button class="btn btn-success mt-3" onclick="spinWheel()">Spin the Wheel</button><br>

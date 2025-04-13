@@ -97,8 +97,8 @@ def upload_profile_picture():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             
             try:
-                # Slet det gamle profilbillede, hvis det findes, og ikke er standardbilledet
-                if user.profile_picture and user.profile_picture != 'static/icon-5355896_640.png':
+                # Slet kun brugerens gamle profilbillede, hvis det findes, og ikke er standardbilledet
+                if user.profile_picture and user.profile_picture != User.default_profile_picture:
                     old_filepath = os.path.join(os.getcwd(), user.profile_picture)
                     if os.path.exists(old_filepath):
                         os.remove(old_filepath)
@@ -113,7 +113,7 @@ def upload_profile_picture():
                     img.save(filepath, "JPEG", quality=85)  # Gem som JPEG med 85% kvalitet
                 
                 # Opdater brugerens profilbillede i databasen
-                user.profile_picture = filepath
+                user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Gem relativ sti
                 db.session.commit()
                 
                 flash('Profilbillede opdateret!', 'success')
