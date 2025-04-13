@@ -70,6 +70,7 @@
                                  style="width: 40px; height: 40px; object-fit: cover;">
                             ${friend.username} - Øl drukket: ${friend.total_beers}
                             ${friend.last_beer_time ? `- Sidste øl drukket: ${friend.last_beer_time}` : '- Ingen øl drukket endnu'}
+                            - Venner siden: ${friend.created_at}
                         </span>
                         <button class="btn btn-danger btn-sm" onclick="removeFriend(${friend.id}, this)">Fjern</button>
                     `;
@@ -130,7 +131,7 @@
     <div id="flash-messages"></div>
     <form method="post" class="mb-3">
         <div class="input-group">
-            <input type="text" class="form-control" name="username" placeholder="Søg efter brugere" required>
+            <input type="text" class="form-control" name="username" placeholder="Søg efter brugere" required autocomplete="off">
             <div class="input-group-append">
                 <button type="submit" class="btn btn-primary">Søg</button>
             </div>
@@ -174,6 +175,7 @@
                     {% else %}
                         - Ingen øl drukket endnu
                     {% endif %}
+                    - Venner siden: {{ friend.created_at }}
                 </span>
                 <button class="btn btn-danger btn-sm" onclick="removeFriend({{ friend.id }}, this)">Fjern</button>
             </li>

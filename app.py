@@ -42,8 +42,9 @@ class User(db.Model):
     
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)  # Rettet fra 'user.id' til 'users.id'
-    friend_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)  # Rettet fra 'user.id' til 'users.id'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    friend_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Tilføj denne linje
     user = db.relationship('User', foreign_keys=[user_id], backref='friendships')
     friend = db.relationship('User', foreign_keys=[friend_id], backref='friends')
 
@@ -310,13 +311,15 @@ def add_friend(friend_id):
                 'id': friend.id,
                 'username': friend.username,
                 'profile_picture': friend.profile_picture or User.default_profile_picture,
-                'total_beers': sum(beer.count for beer in friend.beers)
+                'total_beers': sum(beer.count for beer in friend.beers),
+                'last_beer_time': friend.beers[-1].timestamp.strftime('%d-%m-%Y %H:%M') if friend.beers else None,
+                'created_at': existing_friendship.created_at.strftime('%d-%m-%Y')  # Tilføj dato for venskab
             }
         }, 200
 
     # Opret venskab
     try:
-        friendship = Friendship(user_id=user.id, friend_id=friend.id)
+        friendship = Friendship(user_id=user.id, friend_id=friend.id, created_at=datetime.utcnow())
         db.session.add(friendship)
         db.session.commit()
 
@@ -327,7 +330,9 @@ def add_friend(friend_id):
                 'id': friend.id,
                 'username': friend.username,
                 'profile_picture': friend.profile_picture or User.default_profile_picture,
-                'total_beers': sum(beer.count for beer in friend.beers)
+                'total_beers': sum(beer.count for beer in friend.beers),
+                'last_beer_time': friend.beers[-1].timestamp.strftime('%d-%m-%Y %H:%M') if friend.beers else None,
+                'created_at': friendship.created_at.strftime('%d-%m-%Y')  # Tilføj dato for venskab
             }
         }, 201
     except Exception as e:
