@@ -5,13 +5,77 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Begræns billedets størrelse i modal */
+        #modalProfilePicture {
+            max-width: 100%; /* Sørg for, at billedet ikke overstiger modalens bredde */
+            max-height: 300px; /* Begræns højden på billedet */
+            object-fit: cover; /* Bevar billedets proportioner */
+        }
+    
+        /* Giv modal-popup'en faste dimensioner */
+        #profileModal .modal-dialog {
+            max-width: 500px; /* Fast bredde på modal */
+            margin: auto; /* Centrer modal */
+        }
+    
+        #profileModal .modal-content {
+            padding: 20px; /* Giv lidt indvendig afstand */
+        }
+    </style>
     <script>
+        function openProfileModal(profilePicture, username, userId) {
+            // Indsæt data i modal
+            document.getElementById('modalProfilePicture').src = profilePicture;
+            document.getElementById('modalUsername').textContent = username;
+            document.getElementById('modalFriendId').value = userId;
+        
+            // Opdater formularens action med korrekt friend_id
+            const form = document.getElementById('addFriendForm');
+            form.action = `/add_friend/${userId}`; // Dynamisk indsæt friend_id i URL'en
+        
+            // Vis modal
+            $('#profileModal').modal('show');
+        }
+
         window.onload = function() {
             var theme = localStorage.getItem('theme');
             if (theme) {
                 document.body.className = theme + '-theme';
             }
         };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const addFriendForm = document.getElementById('addFriendForm');
+        
+            addFriendForm.addEventListener('submit', function (event) {
+                event.preventDefault(); // Forhindrer standardformularindsendelse
+        
+                const friendId = document.getElementById('modalFriendId').value;
+        
+                // Send anmodning til serveren for at tilføje vennen
+                fetch(`/add_friend/${friendId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}' // Hvis CSRF er aktiveret
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(`${data.friend.username} er blevet tilføjet som ven!`);
+                        $('#profileModal').modal('hide'); // Luk modal
+                    } else {
+                        alert('Der opstod en fejl: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Netværksfejl:', error);
+                    alert('Der opstod en fejl under tilføjelsen af vennen.');
+                });
+            });
+        });
     </script>
 </head>
 <body class="container d-flex flex-column">
@@ -55,6 +119,8 @@
                                 src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
                                 alt="Profilbillede" 
                                 class="leaderboard-profile-picture"
+                                style="cursor: pointer;"  
+                                onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}', '{{ user.id }}')"
                             >
                             {{ user.username }}
                         </td>
@@ -85,6 +151,8 @@
                                 src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
                                 alt="Profilbillede" 
                                 class="leaderboard-profile-picture"
+                                style="cursor: pointer;" 
+                                onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}', '{{ user.id }}')"
                             >
                             {{ user.username }}
                         </td>
@@ -115,6 +183,8 @@
                                 src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
                                 alt="Profilbillede" 
                                 class="leaderboard-profile-picture"
+                                style="cursor: pointer;" 
+                                onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}', '{{ user.id }}')"
                             >
                             {{ user.username }}
                         </td>
@@ -145,6 +215,8 @@
                                 src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
                                 alt="Profilbillede" 
                                 class="leaderboard-profile-picture"
+                                style="cursor: pointer;" 
+                                onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}', '{{ user.id }}')"
                             >
                             {{ user.username }}
                         </td>
@@ -175,6 +247,8 @@
                                 src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
                                 alt="Profilbillede" 
                                 class="leaderboard-profile-picture"
+                                style="cursor: pointer;" 
+                                onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}', '{{ user.id }}')"
                             >
                             {{ user.username }}
                         </td>
@@ -185,7 +259,29 @@
             </table>
         </div>
     </div>
-
+    <div id="profileModal" class="modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Profil</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Luk">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalProfilePicture" src="" alt="Profilbillede" class="img-fluid rounded">
+                    <p id="modalUsername" class="mt-3"></p>
+                </div>
+                <div class="modal-footer">
+                    <form method="post" action="" id="addFriendForm">
+                        <input type="hidden" name="friend_id" id="modalFriendId">
+                        <button type="submit" class="btn btn-primary">Tilføj som ven</button>
+                    </form>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Luk</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="text-left">
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
     </div>

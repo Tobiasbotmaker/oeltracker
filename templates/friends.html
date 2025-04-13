@@ -5,6 +5,18 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        #modalProfilePicture {
+            max-width: 100%; /* Sørg for, at billedet ikke overstiger modalens bredde */
+            max-height: 400px; /* Begræns højden på billedet */
+            object-fit: cover; /* Bevar billedets proportioner */
+        }
+    
+        #profileModal .modal-dialog {
+            max-width: 500px; /* Fast bredde på modal */
+            margin: auto; /* Centrer modal */
+        }
+    </style>
     <script>
         window.onload = function() {
             var theme = localStorage.getItem('theme');
@@ -12,6 +24,88 @@
                 document.body.className = theme + '-theme';
             }
         };
+
+        function openProfileModal(profilePicture, username) {
+            // Indsæt data i modal
+            document.getElementById('modalProfilePicture').src = profilePicture;
+            document.getElementById('modalUsername').textContent = username;
+    
+            // Vis modal og overlay
+            document.getElementById('profileModal').style.display = 'block';
+            document.getElementById('profileModalOverlay').style.display = 'block';
+        }
+    
+        function closeProfileModal() {
+            // Skjul modal og overlay
+            document.getElementById('profileModal').style.display = 'none';
+            document.getElementById('profileModalOverlay').style.display = 'none';
+        }
+    
+        function addFriend(friendId, button) {
+            // Fjern knappen fra søgeresultaterne
+            button.closest('li').remove();
+        
+            // Send anmodning til serveren for at tilføje vennen
+            fetch(`/add_friend/${friendId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Hvis CSRF er aktiveret
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const friend = data.friend;
+        
+                    // Tilføj vennen til "Dine venner"-listen
+                    const friendsList = document.querySelector('.list-group.mb-3'); // Venne-listen
+                    const newFriend = document.createElement('li');
+                    newFriend.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    newFriend.innerHTML = `
+                        <span class="d-flex align-items-center">
+                            <img src="${friend.profile_picture}" 
+                                 alt="Profilbillede" 
+                                 class="rounded-circle mr-3" 
+                                 style="width: 40px; height: 40px; object-fit: cover;">
+                            ${friend.username} - Øl drukket: ${friend.total_beers}
+                            ${friend.last_beer_time ? `- Sidste øl drukket: ${friend.last_beer_time}` : '- Ingen øl drukket endnu'}
+                        </span>
+                        <button class="btn btn-danger btn-sm" onclick="removeFriend(${friend.id}, this)">Fjern</button>
+                    `;
+                    friendsList.appendChild(newFriend);
+                } else {
+                    alert('Der opstod en fejl: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
+                alert('Der opstod en fejl under tilføjelsen af vennen.');
+            });
+        }
+        
+        function removeFriend(friendId, button) {
+            fetch(`/remove_friend/${friendId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Hvis CSRF er aktiveret
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hvis vennen blev fjernet succesfuldt, fjern vennen fra listen
+                if (data.status === 'success') {
+                    button.closest('li').remove();
+                } else {
+                    alert('Der opstod en fejl: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
+                alert('Der opstod en fejl under fjernelsen af vennen.');
+            });
+        }
     </script>
 </head>
 <body class="container d-flex flex-column">
@@ -33,6 +127,7 @@
     </nav>
     <br>
     <h1 class="mt-5">Venner</h1>
+    <div id="flash-messages"></div>
     <form method="post" class="mb-3">
         <div class="input-group">
             <input type="text" class="form-control" name="username" placeholder="Søg efter brugere" required>
@@ -40,35 +135,65 @@
                 <button type="submit" class="btn btn-primary">Søg</button>
             </div>
         </div>
+        <div id="profileModalOverlay" onclick="closeProfileModal()" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1040;"></div>
+        <div id="profileModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);">
+            <span onclick="closeProfileModal()" style="cursor: pointer; color: red; font-weight: bold; float: right;">&times;</span>
+            <img id="modalProfilePicture" src="" alt="Profilbillede" class="img-fluid rounded" style="max-width: 100%; max-height: 400px; object-fit: cover;">
+            <p id="modalUsername" class="mt-3"></p>
+        </div>
+        <div id="profileModal" class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Profilbillede</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Luk">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <img id="modalProfilePicture" src="" alt="Profilbillede" class="img-fluid rounded">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sektion for dine venner -->
+        <h2 class="mt-4">Dine venner</h2>
+        <ul class="list-group mb-3">
+            {% for friend in friends %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span class="d-flex align-items-center">
+                    <img src="{{ friend.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                         alt="Profilbillede" 
+                         class="rounded-circle mr-3" 
+                         style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                         onclick="openProfileModal('{{ friend.profile_picture or url_for('static', filename='default_profile.png') }}', '{{ friend.username }}')">
+                    {{ friend.username }} - Øl drukket: {{ friend.total_beers }}
+                    {% if friend.last_beer_time %}
+                        - Sidste øl drukket: {{ friend.last_beer_time }}
+                    {% else %}
+                        - Ingen øl drukket endnu
+                    {% endif %}
+                </span>
+                <button class="btn btn-danger btn-sm" onclick="removeFriend({{ friend.id }}, this)">Fjern</button>
+            </li>
+            {% endfor %}
+        </ul>
     </form>
-    <h2 class="mt-4">Dine venner</h2>
-    <ul class="list-group mb-3">
-        {% for friend in friends %}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span class="d-flex align-items-center">
-                <img src="{{ friend.profile_picture or url_for('static', filename='default_profile.png') }}" 
-                     alt="Profilbillede" 
-                     class="rounded-circle mr-3" 
-                     style="width: 40px; height: 40px; object-fit: cover;">
-                {{ friend.username }} - Øl drukket: {{ friend.total_beers }}
-                {% if friend.last_beer_time %}
-                    - Sidste øl drukket: {{ friend.last_beer_time }}
-                {% else %}
-                    - Ingen øl drukket endnu
-                {% endif %}
-            </span>
-        </li>
-        {% endfor %}
-    </ul>
     {% if search_results %}
     <h2 class="mt-4">Resultater</h2>
     <ul class="list-group mb-3">
         {% for result in search_results %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ result.username }}</span>
-            <form action="{{ url_for('add_friend', friend_id=result.id) }}" method="post" class="m-0">
-                <button type="submit" class="btn btn-success btn-sm">Tilføj ven</button>
-            </form>
+            <span class="d-flex align-items-center">
+                <img src="{{ result.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                     alt="Profilbillede" 
+                     class="rounded-circle mr-3" 
+                     style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                     onclick="openProfileModal('{{ result.profile_picture or url_for('static', filename='default_profile.png') }}', '{{ result.username }}')">
+                {{ result.username }}
+            </span>
+            <button class="btn btn-primary btn-sm" onclick="addFriend({{ result.id }}, this)">Tilføj</button>
         </li>
         {% endfor %}
     </ul>

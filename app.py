@@ -260,6 +260,7 @@ def friends():
             friends.append({
                 'id': friend.id,
                 'username': friend.username,
+                'profile_picture': friend.profile_picture or User.default_profile_picture,  # Tilføj profilbillede
                 'total_beers': total_beers,
                 'last_beer_time': last_beer_time  # Send som formateret streng
             })
@@ -270,22 +271,93 @@ def friends():
             search_username = request.form['username']
             search_results = User.query.filter(User.username.ilike(f'%{search_username}%')).all()
             friend_ids = [friend['id'] for friend in friends]
-            search_results = [result for result in search_results if result.id != user.id and result.id not in friend_ids]
+            search_results = [
+                {
+                    'id': result.id,
+                    'username': result.username,
+                    'profile_picture': result.profile_picture or User.default_profile_picture  # Tilføj profilbillede
+                }
+                for result in search_results
+                if result.id != user.id and result.id not in friend_ids
+            ]
         
         return render_template('friends.html', user=user, friends=friends, search_results=search_results)
     return redirect(url_for('login'))
 
 @app.route('/add_friend/<int:friend_id>', methods=['POST'])
 def add_friend(friend_id):
-    if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
-        if user and user.id != friend_id:
-            friend = db.session.get(User, friend_id)
-            if friend:
-                friendship = Friendship(user_id=user.id, friend_id=friend.id)
-                db.session.add(friendship)
-                db.session.commit()
-    return redirect(url_for('friends'))
+    if 'user_id' not in session:
+        return {'status': 'danger', 'message': 'Du skal være logget ind for at tilføje venner.'}, 401
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
+
+    if user.id == friend_id:
+        return {'status': 'danger', 'message': 'Du kan ikke tilføje dig selv som ven.'}, 400
+
+    friend = db.session.get(User, friend_id)
+    if not friend:
+        return {'status': 'warning', 'message': 'Brugeren blev ikke fundet.'}, 404
+
+    # Tjek om venskabet allerede eksisterer
+    existing_friendship = Friendship.query.filter_by(user_id=user.id, friend_id=friend.id).first()
+    if existing_friendship:
+        return {
+            'status': 'info',
+            'message': f'{friend.username} er allerede din ven.',
+            'friend': {
+                'id': friend.id,
+                'username': friend.username,
+                'profile_picture': friend.profile_picture or User.default_profile_picture,
+                'total_beers': sum(beer.count for beer in friend.beers)
+            }
+        }, 200
+
+    # Opret venskab
+    try:
+        friendship = Friendship(user_id=user.id, friend_id=friend.id)
+        db.session.add(friendship)
+        db.session.commit()
+
+        return {
+            'status': 'success',
+            'message': f'{friend.username} er blevet tilføjet som ven!',
+            'friend': {
+                'id': friend.id,
+                'username': friend.username,
+                'profile_picture': friend.profile_picture or User.default_profile_picture,
+                'total_beers': sum(beer.count for beer in friend.beers)
+            }
+        }, 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Fejl under tilføjelse af ven: {e}")
+        return {'status': 'danger', 'message': 'Der opstod en fejl under tilføjelsen af vennen.'}, 500
+
+@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
+def remove_friend(friend_id):
+    if 'user_id' not in session:
+        return {'status': 'danger', 'message': 'Du skal være logget ind for at fjerne venner.'}, 401
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
+
+    # Tjek om venskabet eksisterer
+    friendship = Friendship.query.filter_by(user_id=user.id, friend_id=friend_id).first()
+    if not friendship:
+        return {'status': 'warning', 'message': 'Venskabet eksisterer ikke.'}, 404
+
+    # Fjern venskabet
+    try:
+        db.session.delete(friendship)
+        db.session.commit()
+        return {'status': 'success', 'message': 'Vennen blev fjernet.'}, 200
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Fejl under fjernelse af ven: {e}")
+        return {'status': 'danger', 'message': 'Der opstod en fejl under fjernelsen af vennen.'}, 500
 
 @app.route('/delete_beer', methods=['POST'])
 def delete_beer():
@@ -365,41 +437,53 @@ def add_test_beer_log():
 
 @app.route('/leaderboard')
 def leaderboard():
-    users = User.query.all()
-    
-    def get_leaderboard_data(time_delta=None):
-        leaderboard_data = []
-        for user in users:
-            query = BeerLog.query.filter_by(user_id=user.id)
-            if time_delta:
-                query = query.filter(BeerLog.timestamp >= datetime.utcnow() - time_delta)
-            total_beers = query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
-            leaderboard_data.append({
-                'username': user.username,
-                'profile_picture': user.profile_picture,  # Inkluder profilbillede
-                'total_beers': total_beers
-            })
-        leaderboard_data.sort(key=lambda x: x['total_beers'], reverse=True)
-        return leaderboard_data[:10]  # Limit to top 10 users
+    if 'user_id' in session:
+        user = db.session.get(User, session['user_id'])
+        if not user:
+            flash('Du skal være logget ind for at se leaderboardet.', 'danger')
+            return redirect(url_for('login'))
 
-    # Beregn det samlede antal brugere
-    total_users = User.query.count()  # Tæl antallet af brugere i databasen
+        users = User.query.all()
 
-    top_10_all_time = get_leaderboard_data()
-    top_10_24_hours = get_leaderboard_data(timedelta(days=1))
-    top_10_week = get_leaderboard_data(timedelta(weeks=1))
-    top_10_month = get_leaderboard_data(timedelta(days=30))
-    top_10_year = get_leaderboard_data(timedelta(days=365))
+        def get_leaderboard_data(time_delta=None):
+            leaderboard_data = []
+            for user in users:
+                query = BeerLog.query.filter_by(user_id=user.id)
+                if time_delta:
+                    query = query.filter(BeerLog.timestamp >= datetime.utcnow() - time_delta)
+                total_beers = query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
+                leaderboard_data.append({
+                    'id': user.id,
+                    'username': user.username,
+                    'profile_picture': user.profile_picture or User.default_profile_picture,  # Inkluder profilbillede
+                    'total_beers': total_beers
+                })
+            leaderboard_data.sort(key=lambda x: x['total_beers'], reverse=True)
+            return leaderboard_data[:10]  # Begræns til top 10 brugere
 
-    return render_template(
-        'leaderboard.html', 
-        total_users=total_users,  # Send antallet af brugere til skabelonen
-        top_10_all_time=top_10_all_time,
-        top_10_24_hours=top_10_24_hours,
-        top_10_week=top_10_week,
-        top_10_month=top_10_month,
-        top_10_year=top_10_year
-    )
+        # Beregn det samlede antal brugere
+        total_users = User.query.count()
+
+        # Hent leaderboard-data for forskellige tidsperioder
+        top_10_all_time = get_leaderboard_data()
+        top_10_24_hours = get_leaderboard_data(timedelta(days=1))
+        top_10_week = get_leaderboard_data(timedelta(weeks=1))
+        top_10_month = get_leaderboard_data(timedelta(days=30))
+        top_10_year = get_leaderboard_data(timedelta(days=365))
+
+        return render_template(
+            'leaderboard.html',
+            user=user,  # Send den aktuelle bruger til skabelonen
+            total_users=total_users,
+            top_10_all_time=top_10_all_time,
+            top_10_24_hours=top_10_24_hours,
+            top_10_week=top_10_week,
+            top_10_month=top_10_month,
+            top_10_year=top_10_year
+        )
+    else:
+        flash('Du skal være logget ind for at se leaderboardet.', 'danger')
+        return redirect(url_for('login'))
     
 @app.route('/about')
 def about():
