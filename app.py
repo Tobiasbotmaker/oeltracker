@@ -45,6 +45,7 @@ class Friendship(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     friend_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Tilføj denne linje
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'accepted', 'rejected'
     user = db.relationship('User', foreign_keys=[user_id], backref='friendships')
     friend = db.relationship('User', foreign_keys=[friend_id], backref='friends')
 
@@ -130,6 +131,107 @@ def upload_profile_picture():
             return redirect(url_for('index'))
     flash('Du skal være logget ind for at uploade et billede.', 'danger')
     return redirect(url_for('login'))
+
+@app.route('/send_friend_request/<int:friend_id>', methods=['POST'])
+def send_friend_request(friend_id):
+    if 'user_id' not in session:
+        return {'status': 'danger', 'message': 'Du skal være logget ind for at sende en venneanmodning.'}, 401
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
+
+    if user.id == friend_id:
+        return {'status': 'danger', 'message': 'Du kan ikke sende en venneanmodning til dig selv.'}, 400
+
+    friend = db.session.get(User, friend_id)
+    if not friend:
+        return {'status': 'warning', 'message': 'Brugeren blev ikke fundet.'}, 404
+
+    # Tjek om der allerede er en venneanmodning eller et venskab
+    existing_request = Friendship.query.filter_by(user_id=user.id, friend_id=friend.id).first()
+    if existing_request:
+        if existing_request.status == 'pending':
+            return {'status': 'info', 'message': 'Du har allerede sendt en venneanmodning.'}, 200
+        elif existing_request.status == 'accepted':
+            return {'status': 'info', 'message': 'I er allerede venner.'}, 200
+
+    # Opret venneanmodning
+    try:
+        friendship = Friendship(user_id=user.id, friend_id=friend.id, status='pending')
+        db.session.add(friendship)
+        db.session.commit()
+        return {'status': 'success', 'message': 'Venneanmodning sendt.'}, 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Fejl under oprettelse af venneanmodning: {e}")
+        return {'status': 'danger', 'message': 'Der opstod en fejl under oprettelsen af venneanmodningen.'}, 500
+    
+@app.route('/accept_friend_request/<int:friendship_id>', methods=['POST'])
+def accept_friend_request(friendship_id):
+    if 'user_id' not in session:
+        return {'status': 'danger', 'message': 'Du skal være logget ind for at acceptere en venneanmodning.'}, 401
+
+    # Hent venneanmodningen
+    friendship = Friendship.query.get(friendship_id)
+    if not friendship:
+        return {'status': 'danger', 'message': 'Venneanmodningen blev ikke fundet.'}, 404
+
+    # Tjek om den aktuelle bruger er modtageren af venneanmodningen
+    if friendship.friend_id != session['user_id']:
+        return {'status': 'danger', 'message': 'Du har ikke tilladelse til at acceptere denne venneanmodning.'}, 403
+
+    try:
+        # Opdater status til 'accepted'
+        friendship.status = 'accepted'
+        friendship.created_at = datetime.utcnow()  # Opdater tidspunktet for accept
+        db.session.commit()
+        return {'status': 'success', 'message': 'Venneanmodning accepteret.'}, 200
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Fejl under accept af venneanmodning: {e}")
+        return {'status': 'danger', 'message': 'Der opstod en fejl under accept af venneanmodningen.'}, 500
+    
+@app.route('/reject_friend_request/<int:friendship_id>', methods=['POST'])
+def reject_friend_request(friendship_id):
+    if 'user_id' not in session:
+        return {'status': 'danger', 'message': 'Du skal være logget ind for at afvise en venneanmodning.'}, 401
+
+    friendship = Friendship.query.get(friendship_id)
+    if not friendship or friendship.friend_id != session['user_id']:
+        return {'status': 'danger', 'message': 'Venneanmodningen blev ikke fundet.'}, 404
+
+    try:
+        db.session.delete(friendship)
+        db.session.commit()
+        return {'status': 'success'}, 200
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Fejl under afvisning af venneanmodning: {e}")
+        return {'status': 'danger', 'message': 'Der opstod en fejl under afvisning af venneanmodningen.'}, 500
+    
+@app.route('/cancel_friend_request/<int:friend_id>', methods=['POST'])
+def cancel_friend_request(friend_id):
+    if 'user_id' not in session:
+        return {'status': 'danger', 'message': 'Du skal være logget ind for at annullere en venneanmodning.'}, 401
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
+
+    # Find venneanmodningen
+    friendship = Friendship.query.filter_by(user_id=user.id, friend_id=friend_id, status='pending').first()
+    if not friendship:
+        return {'status': 'warning', 'message': 'Ingen venneanmodning blev fundet.'}, 404
+
+    try:
+        db.session.delete(friendship)
+        db.session.commit()
+        return {'status': 'success'}, 200
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Fejl under annullering af venneanmodning: {e}")
+        return {'status': 'danger', 'message': 'Der opstod en fejl under annulleringen af venneanmodningen.'}, 500
 
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
@@ -246,44 +348,87 @@ def delete_user(user_id):
 
 @app.route('/friends', methods=['GET', 'POST'])
 def friends():
-    if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
-        if not user:
-            return redirect(url_for('login'))
-        
-        # Hent brugerens venner
-        friends = []
-        for friendship in user.friendships:
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        return redirect(url_for('login'))
+
+    # Hent brugerens venner
+    friends = []
+    for friendship in Friendship.query.filter(
+        ((Friendship.user_id == user.id) | (Friendship.friend_id == user.id)) & 
+        (Friendship.status == 'accepted')
+    ).all():
+        if friendship.user_id == user.id:
             friend = friendship.friend
-            beer_logs = BeerLog.query.filter_by(user_id=friend.id).all()
-            total_beers = sum(log.count for log in beer_logs)
-            last_beer_time = beer_logs[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if beer_logs else None
-            friends.append({
-                'id': friend.id,
-                'username': friend.username,
-                'profile_picture': friend.profile_picture or User.default_profile_picture,  # Tilføj profilbillede
-                'total_beers': total_beers,
-                'last_beer_time': last_beer_time  # Send som formateret streng
+        else:
+            friend = friendship.user
+
+        beer_logs = BeerLog.query.filter_by(user_id=friend.id).all()
+        total_beers = sum(log.count for log in beer_logs)
+        last_beer_time = beer_logs[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if beer_logs else None
+
+        friends.append({
+            'id': friend.id,
+            'username': friend.username,
+            'profile_picture': friend.profile_picture or 'static/icon-5355896_640.png',
+            'total_beers': total_beers,
+            'last_beer_time': last_beer_time,
+            'created_at': friendship.created_at.strftime('%d-%m-%Y')
+        })
+
+    # Hent venneanmodninger
+    friend_requests = []
+    for friendship in Friendship.query.filter_by(friend_id=user.id, status='pending').all():
+        requester = friendship.user
+        friend_requests.append({
+            'id': friendship.id,
+            'username': requester.username,
+            'profile_picture': requester.profile_picture or 'static/icon-5355896_640.png'
+        })
+
+    # Håndter søgning
+    search_results = []
+    if request.method == 'POST':
+        search_username = request.form['username']
+        search_results_query = User.query.filter(User.username.ilike(f'%{search_username}%')).all()
+
+        for result in search_results_query:
+            # Udeluk brugere, der allerede er venner
+            friendship = Friendship.query.filter(
+                ((Friendship.user_id == user.id) & (Friendship.friend_id == result.id)) |
+                ((Friendship.user_id == result.id) & (Friendship.friend_id == user.id))
+            ).first()
+
+            if friendship and friendship.status == 'accepted':
+                continue  # Spring over brugere, der allerede er venner
+
+            if friendship:
+                if friendship.status == 'pending' and friendship.user_id == user.id:
+                    status = 'pending_sent'
+                elif friendship.status == 'pending' and friendship.friend_id == user.id:
+                    status = 'pending_received'
+                else:
+                    status = 'none'
+            else:
+                status = 'none'
+
+            search_results.append({
+                'id': result.id,
+                'username': result.username,
+                'profile_picture': result.profile_picture or 'static/icon-5355896_640.png',
+                'status': status
             })
-        
-        # Håndter søgning
-        search_results = []
-        if request.method == 'POST':
-            search_username = request.form['username']
-            search_results = User.query.filter(User.username.ilike(f'%{search_username}%')).all()
-            friend_ids = [friend['id'] for friend in friends]
-            search_results = [
-                {
-                    'id': result.id,
-                    'username': result.username,
-                    'profile_picture': result.profile_picture or User.default_profile_picture  # Tilføj profilbillede
-                }
-                for result in search_results
-                if result.id != user.id and result.id not in friend_ids
-            ]
-        
-        return render_template('friends.html', user=user, friends=friends, search_results=search_results)
-    return redirect(url_for('login'))
+
+    return render_template(
+        'friends.html',
+        user=user,
+        friends=friends,
+        friend_requests=friend_requests,
+        search_results=search_results
+    )
 
 @app.route('/add_friend/<int:friend_id>', methods=['POST'])
 def add_friend(friend_id):

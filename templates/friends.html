@@ -42,46 +42,56 @@
         }
     
         function addFriend(friendId, button) {
-            // Fjern knappen fra søgeresultaterne
-            button.closest('li').remove();
+            button.disabled = true;
         
-            // Send anmodning til serveren for at tilføje vennen
-            fetch(`/add_friend/${friendId}`, {
+            fetch(`/send_friend_request/${friendId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}' // Hvis CSRF er aktiveret
+                    'X-CSRFToken': '{{ csrf_token }}'
                 }
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    const friend = data.friend;
-        
-                    // Tilføj vennen til "Dine venner"-listen
-                    const friendsList = document.querySelector('.list-group.mb-3'); // Venne-listen
-                    const newFriend = document.createElement('li');
-                    newFriend.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    newFriend.innerHTML = `
-                        <span class="d-flex align-items-center">
-                            <img src="${friend.profile_picture}" 
-                                 alt="Profilbillede" 
-                                 class="rounded-circle mr-3" 
-                                 style="width: 40px; height: 40px; object-fit: cover;">
-                            ${friend.username} - Øl drukket: ${friend.total_beers}
-                            ${friend.last_beer_time ? `- Sidste øl drukket: ${friend.last_beer_time}` : '- Ingen øl drukket endnu'}
-                            - Venner siden: ${friend.created_at}
-                        </span>
-                        <button class="btn btn-danger btn-sm" onclick="removeFriend(${friend.id}, this)">Fjern</button>
-                    `;
-                    friendsList.appendChild(newFriend);
-                } else {
-                    alert('Der opstod en fejl: ' + data.message);
+                    // Opdater knappen for at indikere, at anmodningen er sendt
+                    button.textContent = 'Annuller anmodning';
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-warning');
+                    button.setAttribute('onclick', `cancelFriendRequest(${friendId}, this)`);
                 }
+                button.disabled = false;
             })
             .catch(error => {
                 console.error('Netværksfejl:', error);
-                alert('Der opstod en fejl under tilføjelsen af vennen.');
+                button.disabled = false;
+            });
+        }
+
+        function cancelFriendRequest(friendId, button) {
+            button.disabled = true;
+        
+            fetch(`/cancel_friend_request/${friendId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Opdater knappen for at indikere, at anmodningen er annulleret
+                    button.textContent = 'Send anmodning';
+                    button.classList.remove('btn-warning');
+                    button.classList.add('btn-primary');
+                    button.setAttribute('onclick', `addFriend(${friendId}, this)`);
+                }
+                button.disabled = false;
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
+                button.disabled = false;
             });
         }
         
@@ -90,21 +100,55 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}' // Hvis CSRF er aktiveret
+                    'X-CSRFToken': '{{ csrf_token }}'
                 }
             })
             .then(response => response.json())
             .then(data => {
-                // Hvis vennen blev fjernet succesfuldt, fjern vennen fra listen
                 if (data.status === 'success') {
-                    button.closest('li').remove();
-                } else {
-                    alert('Der opstod en fejl: ' + data.message);
+                    button.closest('li').remove(); // Fjern vennen fra listen
                 }
             })
             .catch(error => {
                 console.error('Netværksfejl:', error);
-                alert('Der opstod en fejl under fjernelsen af vennen.');
+            });
+        }
+        
+        function acceptFriendRequest(requestId) {
+            fetch(`/accept_friend_request/${requestId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload(); // Genindlæs siden for at opdatere listen
+                }
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
+            });
+        }
+        
+        function rejectFriendRequest(requestId) {
+            fetch(`/reject_friend_request/${requestId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload(); // Genindlæs siden for at opdatere listen
+                }
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
             });
         }
     </script>
@@ -164,14 +208,17 @@
             {% for friend in friends %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span class="d-flex align-items-center">
-                    <img src="{{ friend.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                    <img src="{% if friend.profile_picture %}{{ friend.profile_picture }}{% else %}{{ url_for('static', filename='icon-5355896_640.png') }}{% endif %}" 
                          alt="Profilbillede" 
                          class="rounded-circle mr-3" 
                          style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
-                         onclick="openProfileModal('{{ friend.profile_picture or url_for('static', filename='default_profile.png') }}', '{{ friend.username }}')">
-                    {{ friend.username }} - Øl drukket: {{ friend.total_beers }}
-                    {% if friend.last_beer_time %}
-                        - Sidste øl drukket: {{ friend.last_beer_time }}
+                         onclick="openProfileModal('{% if friend.profile_picture %}{{ friend.profile_picture }}{% else %}{{ url_for('static', filename='icon-5355896_640.png') }}{% endif %}', '{{ friend.username }}')">
+                    {{ friend.username }}
+                    {% if friend.total_beers > 0 %}
+                        - Øl drukket: {{ friend.total_beers }}
+                        {% if friend.last_beer_time %}
+                            - Sidste øl drukket: {{ friend.last_beer_time }}
+                        {% endif %}
                     {% else %}
                         - Ingen øl drukket endnu
                     {% endif %}
@@ -188,18 +235,50 @@
         {% for result in search_results %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
             <span class="d-flex align-items-center">
-                <img src="{{ result.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                <img src="{{ result.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
                      alt="Profilbillede" 
                      class="rounded-circle mr-3" 
                      style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
-                     onclick="openProfileModal('{{ result.profile_picture or url_for('static', filename='default_profile.png') }}', '{{ result.username }}')">
+                     onclick="openProfileModal('{{ result.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ result.username }}')">
                 {{ result.username }}
             </span>
-            <button class="btn btn-primary btn-sm" onclick="addFriend({{ result.id }}, this)">Tilføj</button>
+            {% if result.status == 'none' %}
+            <button class="btn btn-primary btn-sm" onclick="addFriend({{ result.id }}, this)">Send anmodning</button>
+            {% elif result.status == 'pending_sent' %}
+            <button class="btn btn-warning btn-sm" onclick="cancelFriendRequest({{ result.id }}, this)">Annuller anmodning</button>
+            {% elif result.status == 'pending_received' %}
+            <button class="btn btn-success btn-sm" onclick="acceptFriendRequest({{ result.id }})">Accepter</button>
+            <button class="btn btn-danger btn-sm" onclick="rejectFriendRequest({{ result.id }})">Afvis</button>
+            {% elif result.status == 'accepted' %}
+            <button class="btn btn-secondary btn-sm" disabled>Allerede venner</button>
+            {% endif %}
         </li>
         {% endfor %}
     </ul>
     {% endif %}
+    <h2 class="mt-4">Venneanmodninger</h2>
+    <ul class="list-group mb-3">
+        {% if friend_requests %}
+        {% for request in friend_requests %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span class="d-flex align-items-center">
+                <img src="{{ request.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                     alt="Profilbillede" 
+                     class="rounded-circle mr-3" 
+                     style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                     onclick="openProfileModal('{{ request.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ request.username }}')">
+                {{ request.username }}
+            </span>
+            <div>
+                <button class="btn btn-success btn-sm" onclick="acceptFriendRequest({{ request.id }})">Accepter</button>
+                <button class="btn btn-danger btn-sm" onclick="rejectFriendRequest({{ request.id }})">Afvis</button>
+            </div>
+        </li>
+        {% endfor %}
+        {% else %}
+            <p class="text-muted">Du har ingen venneanmodninger</p>
+        {% endif %}
+    </ul>
     <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
 </body>
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
