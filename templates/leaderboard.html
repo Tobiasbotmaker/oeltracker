@@ -24,17 +24,31 @@
         }
     </style>
     <script>
-        function openProfileModal(profilePicture, username, userId) {
-            // Insert data into modal
+        function openProfileModal(profilePicture, username, userId, status) {
+            // Indsæt data i modal
             document.getElementById('modalProfilePicture').src = profilePicture;
             document.getElementById('modalUsername').textContent = username;
             document.getElementById('modalFriendId').value = userId;
-
-            // Update form action with correct friend_id
-            const form = document.getElementById('addFriendForm');
-            form.action = `/add_friend/${userId}`;
-
-            // Show modal
+        
+            const addFriendForm = document.getElementById('addFriendForm');
+            const addFriendButton = addFriendForm.querySelector('button[type="submit"]');
+        
+            // Opdater knap og form action baseret på status
+            if (status === 'none') {
+                addFriendButton.textContent = 'Tilføj som ven';
+                addFriendButton.className = 'btn btn-primary';
+                addFriendForm.action = `/add_friend/${userId}`;
+            } else if (status === 'pending_sent') {
+                addFriendButton.textContent = 'Annuller anmodning';
+                addFriendButton.className = 'btn btn-warning';
+                addFriendForm.action = `/cancel_friend_request/${userId}`;
+            } else if (status === 'accepted') {
+                addFriendButton.textContent = 'Allerede venner';
+                addFriendButton.className = 'btn btn-secondary';
+                addFriendButton.disabled = true;
+            }
+        
+            // Vis modal
             $('#profileModal').modal('show');
         }
 
@@ -47,32 +61,48 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             const addFriendForm = document.getElementById('addFriendForm');
-
+        
             addFriendForm.addEventListener('submit', function (event) {
-                event.preventDefault(); // Prevent default form submission
-
+                event.preventDefault(); // Forhindrer standardformularindsendelse
+        
                 const friendId = document.getElementById('modalFriendId').value;
-
-                // Send request to server to add friend
-                fetch(`/add_friend/${friendId}`, {
+        
+                // Send anmodning til serveren for at tilføje eller annullere venneanmodning
+                fetch(addFriendForm.action, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}' // If CSRF is enabled
+                        'X-CSRFToken': '{{ csrf_token }}' // Hvis CSRF er aktiveret
                     }
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        alert(`${data.friend.username} er blevet tilføjet som ven!`);
-                        $('#profileModal').modal('hide'); // Close modal
+                        const addFriendButton = document.querySelector('#addFriendForm button[type="submit"]');
+        
+                        if (addFriendButton.textContent === 'Tilføj som ven') {
+                            // Skift til "Annuller anmodning"
+                            addFriendButton.textContent = 'Annuller anmodning';
+                            addFriendButton.classList.remove('btn-primary');
+                            addFriendButton.classList.add('btn-warning');
+                            addFriendForm.action = `/cancel_friend_request/${friendId}`;
+                        } else if (addFriendButton.textContent === 'Annuller anmodning') {
+                            // Skift tilbage til "Tilføj som ven"
+                            addFriendButton.textContent = 'Tilføj som ven';
+                            addFriendButton.classList.remove('btn-warning');
+                            addFriendButton.classList.add('btn-primary');
+                            addFriendForm.action = `/add_friend/${friendId}`;
+                        }
+        
+                        alert(data.message);
+                        $('#profileModal').modal('hide'); // Luk modal
                     } else {
                         alert('Der opstod en fejl: ' + data.message);
                     }
                 })
                 .catch(error => {
                     console.error('Netværksfejl:', error);
-                    alert('Der opstod en fejl under tilføjelsen af vennen.');
+                    alert('Der opstod en fejl under behandlingen af venneanmodningen.');
                 });
             });
         });

@@ -226,12 +226,17 @@ def cancel_friend_request(friend_id):
     # Find venneanmodningen
     friendship = Friendship.query.filter_by(user_id=user.id, friend_id=friend_id, status='pending').first()
     if not friendship:
+        app.logger.warning(f"Bruger {user.id} forsøgte at annullere en ikke-eksisterende venneanmodning til {friend_id}")
         return {'status': 'warning', 'message': 'Ingen venneanmodning blev fundet.'}, 404
 
     try:
+        app.logger.info(f"Bruger {user.id} annullerer venneanmodning til {friend_id}")
         db.session.delete(friendship)
         db.session.commit()
-        return {'status': 'success'}, 200
+        return {
+            'status': 'success',
+            'message': f'Venneanmodning til {friendship.friend.username} blev annulleret.'
+        }, 200
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Fejl under annullering af venneanmodning: {e}")
@@ -742,11 +747,31 @@ def leaderboard():
                 if time_delta:
                     query = query.filter(BeerLog.timestamp >= datetime.utcnow() - time_delta)
                 total_beers = query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
+
+                # Find status for venneanmodning
+                friendship = Friendship.query.filter(
+                    ((Friendship.user_id == session['user_id']) & (Friendship.friend_id == user.id)) |
+                    ((Friendship.user_id == user.id) & (Friendship.friend_id == session['user_id']))
+                ).first()
+
+                if friendship:
+                    if friendship.status == 'pending' and friendship.user_id == session['user_id']:
+                        status = 'pending_sent'
+                    elif friendship.status == 'pending' and friendship.friend_id == session['user_id']:
+                        status = 'pending_received'
+                    elif friendship.status == 'accepted':
+                        status = 'accepted'
+                    else:
+                        status = 'none'
+                else:
+                    status = 'none'
+
                 leaderboard_data.append({
                     'id': user.id,
                     'username': user.username,
                     'profile_picture': user.profile_picture or User.default_profile_picture,
-                    'total_beers': total_beers
+                    'total_beers': total_beers,
+                    'status': status  # Tilføj status
                 })
             leaderboard_data.sort(key=lambda x: x['total_beers'], reverse=True)
             return leaderboard_data[:10]  # Limit to top 10 users
