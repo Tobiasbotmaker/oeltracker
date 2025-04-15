@@ -165,10 +165,6 @@
         <form id="deleteBeerForm" action="{{ url_for('delete_beer') }}" method="post" class="d-inline">
             <button type="button" class="btn btn-danger" onclick="confirmDelete()">Slet øl</button>
         </form>
-        <p class="mt-4">
-            Prøv den nye påskefrokost tracker ved at klikke 
-            <a href="{{ url_for('easter') }}" class="text-primary font-weight-bold">her</a>.
-        </p>
         {% if is_admin %}
             <a href="{{ url_for('admin') }}" class="btn btn-secondary mt-3">Admin side</a>
         {% endif %}
