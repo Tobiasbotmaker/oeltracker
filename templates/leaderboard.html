@@ -25,6 +25,8 @@
     </style>
     <script>
         function openProfileModal(profilePicture, username, userId, status) {
+            console.log('openProfileModal kaldt med:', profilePicture, username, userId, status);
+        
             // Indsæt data i modal
             document.getElementById('modalProfilePicture').src = profilePicture;
             document.getElementById('modalUsername').textContent = username;
@@ -37,7 +39,7 @@
             if (status === 'none') {
                 addFriendButton.textContent = 'Tilføj som ven';
                 addFriendButton.className = 'btn btn-primary';
-                addFriendForm.action = `/add_friend/${userId}`;
+                addFriendForm.action = `/send_friend_request/${userId}`;
             } else if (status === 'pending_sent') {
                 addFriendButton.textContent = 'Annuller anmodning';
                 addFriendButton.className = 'btn btn-warning';
@@ -50,6 +52,31 @@
         
             // Vis modal
             $('#profileModal').modal('show');
+        }
+
+        function addFriend(friendId, button) {
+            button.disabled = true;
+        
+            fetch(`/send_friend_request/${friendId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    button.textContent = 'Annuller anmodning';
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-warning');
+                    button.setAttribute('onclick', `cancelFriendRequest(${friendId}, this)`);
+                }
+                button.disabled = false;
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
+                button.disabled = false;
+            });
         }
 
         window.onload = function() {
@@ -71,8 +98,7 @@
                 fetch(addFriendForm.action, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}' // Hvis CSRF er aktiveret
+                        'Content-Type': 'application/json'
                     }
                 })
                 .then(response => response.json())
@@ -159,12 +185,12 @@
                         <td>{{ loop.index }}</td>
                         <td>
                             <img 
-                                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                                alt="Profilbillede" 
-                                class="leaderboard-profile-picture"
-                                style="cursor: pointer;" 
-                                onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}', '{{ user.id }}')"
-                            >
+                            src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                            alt="Profilbillede" 
+                            class="leaderboard-profile-picture"
+                            style="cursor: pointer;" 
+                            onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}', {{ user.id }}, '{{ user.status }}')"
+                        >
                             {{ user.username }}
                         </td>
                         <td>{{ user.total_beers }}</td>
@@ -191,8 +217,7 @@
                     <p id="modalUsername" class="mt-3"></p>
                 </div>
                 <div class="modal-footer">
-                    <form method="post" action="" id="addFriendForm">
-                        <input type="hidden" name="friend_id" id="modalFriendId">
+                    <form method="post" id="addFriendForm">
                         <button type="submit" class="btn btn-primary">Tilføj som ven</button>
                     </form>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Luk</button>
@@ -200,6 +225,9 @@
             </div>
         </div>
     </div>
+    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#profileModal">
+        Åbn Modal
+    </button>
 
     <div class="text-left">
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>

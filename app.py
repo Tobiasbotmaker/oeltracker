@@ -739,7 +739,7 @@ def leaderboard():
             return redirect(url_for('login'))
 
         users = User.query.all()
-
+    
         def get_leaderboard_data(time_delta=None):
             leaderboard_data = []
             for user in users:
@@ -774,7 +774,7 @@ def leaderboard():
                     'status': status  # Tilføj status
                 })
             leaderboard_data.sort(key=lambda x: x['total_beers'], reverse=True)
-            return leaderboard_data[:10]  # Limit to top 10 users
+            return leaderboard_data[:10]
 
         # Calculate the total number of users
         total_users = User.query.count()
