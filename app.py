@@ -86,12 +86,10 @@ def upload_profile_picture():
     if 'user_id' in session:
         user = db.session.get(User, session['user_id'])
         if 'profile_picture' not in request.files:
-            flash('Ingen fil valgt.', 'warning')
             return redirect(url_for('index'))
         
         file = request.files['profile_picture']
         if file.filename == '':
-            flash('Ingen fil valgt.', 'warning')
             return redirect(url_for('index'))
         
         if file and allowed_file(file.filename):
@@ -118,7 +116,8 @@ def upload_profile_picture():
                 user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Gem relativ sti
                 db.session.commit()
                 
-                flash('Profilbillede opdateret!', 'success')
+                # Removed the flash message here
+                # flash('Profilbillede opdateret!', 'success')
             except Exception as e:
                 # Hvis der opstår en fejl (f.eks. forkert format)
                 app.logger.error(f"Fejl under upload af profilbillede: {e}")
@@ -312,6 +311,89 @@ def add_beer():
             beer_log = BeerLog(user_id=user.id, count=1, timestamp=datetime.utcnow(), latitude=latitude, longitude=longitude)
             db.session.add(beer_log)
             db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    # Ensure the user is logged in
+    if 'user_id' not in session:
+        return {'status': 'danger', 'message': 'Du skal være logget ind for at se din profil.'}, 401
+
+    # Retrieve the logged-in user
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
+
+    if request.method == 'POST':
+        # Handle profile picture upload
+        if 'profile_picture' not in request.files or request.files['profile_picture'].filename == '':
+            return {'status': 'warning', 'message': 'Ingen fil valgt.'}, 400
+
+        file = request.files['profile_picture']
+        if not allowed_file(file.filename):
+            return {'status': 'danger', 'message': 'Formatet på billedet understøttes ikke. Prøv igen med en PNG, JPG eller JPEG.'}, 400
+
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        try:
+            # Delete the old profile picture if it exists and is not the default
+            if user.profile_picture and user.profile_picture != User.default_profile_picture:
+                old_filepath = os.path.join(os.getcwd(), user.profile_picture)
+                if os.path.exists(old_filepath):
+                    os.remove(old_filepath)
+
+            # Save the new file
+            file.save(filepath)
+
+            # Resize the image to a maximum of 300x300 pixels
+            with Image.open(filepath) as img:
+                img = img.convert("RGB")  # Ensure the image is in RGB format
+                img.thumbnail((300, 300))  # Resize to max 300x300 pixels
+                img.save(filepath, "JPEG", quality=85)  # Save as JPEG with 85% quality
+
+            # Update the user's profile picture in the database
+            user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Save relative path
+            db.session.commit()
+
+            return {'status': 'success'}, 200
+        except Exception as e:
+            app.logger.error(f"Fejl under upload af profilbillede: {e}")
+            return {'status': 'danger', 'message': 'Der opstod en fejl under upload af billedet. Prøv igen.'}, 500
+
+    # Render the profile page
+    return render_template('profile.html', user=user)
+
+@app.route('/delete_account', methods=['GET', 'POST'])
+def delete_account():
+    if 'user_id' not in session:
+        flash('Du skal være logget ind for at slette din konto.', 'danger')
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, session['user_id'])
+    if user:
+        try:
+            # Delete the profile picture file if it exists and is not the default
+            if user.profile_picture and user.profile_picture != User.default_profile_picture:
+                profile_picture_path = os.path.join(os.getcwd(), user.profile_picture)
+                if os.path.exists(profile_picture_path):
+                    os.remove(profile_picture_path)
+
+            # Delete user-related data (e.g., friendships, logs)
+            BeerLog.query.filter_by(user_id=user.id).delete()
+            Friendship.query.filter((Friendship.user_id == user.id) | (Friendship.friend_id == user.id)).delete()
+
+            # Delete the user
+            db.session.delete(user)
+            db.session.commit()
+
+            flash('Din konto er blevet slettet.', 'success')
+        except Exception as e:
+            app.logger.error(f"Fejl under sletning af konto: {e}")
+            flash('Der opstod en fejl under sletning af din konto. Prøv igen.', 'danger')
+            return redirect(url_for('profile'))
+
+    session.clear()  # Log the user out
     return redirect(url_for('index'))
 
 @app.route('/admin')
@@ -575,16 +657,6 @@ def map():
 def settings():
     return render_template('settings.html')
 
-@app.route('/add_test_beer_log')
-def add_test_beer_log():
-    if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
-        if user:
-            beer_log = BeerLog(user_id=user.id, count=1, timestamp=datetime.utcnow(), latitude=37.7749, longitude=-122.4194)
-            db.session.add(beer_log)
-            db.session.commit()
-    return redirect(url_for('map'))
-
 @app.route('/leaderboard')
 def leaderboard():
     if 'user_id' in session:
@@ -605,31 +677,29 @@ def leaderboard():
                 leaderboard_data.append({
                     'id': user.id,
                     'username': user.username,
-                    'profile_picture': user.profile_picture or User.default_profile_picture,  # Inkluder profilbillede
+                    'profile_picture': user.profile_picture or User.default_profile_picture,
                     'total_beers': total_beers
                 })
             leaderboard_data.sort(key=lambda x: x['total_beers'], reverse=True)
-            return leaderboard_data[:10]  # Begræns til top 10 brugere
+            return leaderboard_data[:10]  # Limit to top 10 users
 
-        # Beregn det samlede antal brugere
+        # Calculate the total number of users
         total_users = User.query.count()
 
-        # Hent leaderboard-data for forskellige tidsperioder
-        top_10_all_time = get_leaderboard_data()
-        top_10_24_hours = get_leaderboard_data(timedelta(days=1))
-        top_10_week = get_leaderboard_data(timedelta(weeks=1))
-        top_10_month = get_leaderboard_data(timedelta(days=30))
-        top_10_year = get_leaderboard_data(timedelta(days=365))
+        # Prepare leaderboard sections dynamically
+        leaderboard_sections = [
+            ("Inden for de sidste 24 timer", get_leaderboard_data(timedelta(days=1))),
+            ("Inden for den sidste uge", get_leaderboard_data(timedelta(weeks=1))),
+            ("Inden for den sidste måned", get_leaderboard_data(timedelta(days=30))),
+            ("Inden for det sidste år", get_leaderboard_data(timedelta(days=365))),
+            ("Flest øl drukket nogensinde", get_leaderboard_data())
+        ]
 
         return render_template(
             'leaderboard.html',
-            user=user,  # Send den aktuelle bruger til skabelonen
+            user=user,  # Send the current user to the template
             total_users=total_users,
-            top_10_all_time=top_10_all_time,
-            top_10_24_hours=top_10_24_hours,
-            top_10_week=top_10_week,
-            top_10_month=top_10_month,
-            top_10_year=top_10_year
+            leaderboard_sections=leaderboard_sections
         )
     else:
         flash('Du skal være logget ind for at se leaderboardet.', 'danger')

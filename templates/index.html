@@ -154,13 +154,14 @@
                     <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
                 </div>
             </div>
-            <img 
-            src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-            alt="Profilbillede" 
-            class="profile-picture"
-            id="profilePicture"
-            onclick="openPopup()" 
-        >
+            <a href="{{ url_for('profile') }}">
+                <img 
+                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                    alt="Profilbillede" 
+                    class="profile-picture"
+                    id="profilePicture"
+                >
+            </a>
         <div id="profilePopup" class="popup">
             <div class="popup-content">
                 <span class="close" onclick="closePopup()">&times;</span>

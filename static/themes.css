@@ -1,3 +1,57 @@
+/* Ensure consistent table layout */
+.table {
+    width: 100%; /* Ensure the table spans the full width */
+    table-layout: fixed; /* Enforce fixed column widths */
+    border-collapse: collapse; /* Ensure consistent border rendering */
+    border: 2px solid #dee2e6; /* Add a fixed border around the entire table */
+}
+
+.table th, .table td {
+    text-align: left; /* Align text to the left */
+    vertical-align: middle; /* Vertically align content */
+    padding: 12px; /* Ensure consistent padding */
+    border: 1px solid #dee2e6; /* Add fixed borders between cells */
+    font-size: 14px; /* Slightly smaller font for compact tables */
+    color: #212529; /* Dark text for readability */
+    word-wrap: break-word; /* Prevent content overflow */
+}
+
+/* Set specific column widths */
+.table th:nth-child(1), .table td:nth-child(1) {
+    width: 10%; /* Set width for the "#" column */
+}
+
+.table th:nth-child(2), .table td:nth-child(2) {
+    width: 60%; /* Set width for the "Bruger" column */
+}
+
+.table th:nth-child(3), .table td:nth-child(3) {
+    width: 30%; /* Set width for the "Antal øl" column */
+}
+
+/* Table header styling */
+.table thead th {
+    font-weight: bold; /* Make headers bold */
+    text-transform: uppercase; /* Capitalize headers for emphasis */
+    border-bottom: 2px solid #dee2e6; /* Thicker border for headers */
+}
+
+/* Profile picture styling */
+.leaderboard-profile-picture {
+    width: 40px; /* Set consistent size */
+    height: 40px; /* Set consistent size */
+    border-radius: 50%; /* Make the image circular */
+    object-fit: cover; /* Ensure the image fills the container */
+    margin-right: 10px; /* Add spacing between the image and text */
+    vertical-align: middle; /* Align the image with the text */
+    border: 1px solid #dee2e6; /* Add a subtle border around the image */
+}
+
+/* Add spacing between leaderboard sections */
+.leaderboard-section {
+    margin-bottom: 30px; /* Add spacing between sections */
+}
+
 /* Default theme (Dag Theme) */
 body {
     background-color: #f8f9fa; /* Lys baggrund */
