@@ -9,6 +9,20 @@ import logging
 from PIL import Image
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+def compress_image(filepath, max_size_kb=100):
+    """Compress an image to ensure it is under the specified size in KB."""
+    max_size_bytes = max_size_kb * 1024  # Konverter KB til bytes
+    quality = 85  # Startkvalitet
+
+    with Image.open(filepath) as img:
+        img = img.convert("RGB")  # Sørg for, at billedet er i RGB-format
+        while True:
+            # Gem billedet midlertidigt med den aktuelle kvalitet
+            img.save(filepath, "JPEG", quality=quality)
+            # Tjek filstørrelsen
+            if os.path.getsize(filepath) <= max_size_bytes or quality <= 10:
+                break  # Stop, hvis filen er under grænsen, eller kvaliteten er for lav
+            quality -= 5  # Reducer kvaliteten for yderligere komprimering
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__, static_folder='static')
@@ -104,14 +118,11 @@ def upload_profile_picture():
                     if os.path.exists(old_filepath):
                         os.remove(old_filepath)
                 
-                # Save the new file
+                # Save the new file temporarily
                 file.save(filepath)
                 
-                # Resize the image to a maximum of 300x300 pixels
-                with Image.open(filepath) as img:
-                    img = img.convert("RGB")  # Ensure the image is in RGB format
-                    img.thumbnail((300, 300))  # Resize to max 300x300 pixels
-                    img.save(filepath, "JPEG", quality=85)  # Save as JPEG with 85% quality
+                # Resize and compress the image to a maximum of 100 KB
+                compress_image(filepath, max_size_kb=100)
                 
                 # Update the user's profile picture in the database
                 user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Save relative path
