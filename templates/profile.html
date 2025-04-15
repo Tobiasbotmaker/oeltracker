@@ -19,7 +19,7 @@
             display: flex;
             gap: 10px; /* Add spacing between the buttons */
         }
-    
+
         /* Large Profile Picture in the Middle */
         .profile-picture-large {
             width: 150px;
@@ -47,13 +47,10 @@
             event.preventDefault(); // Prevent the form from submitting normally
             const form = document.getElementById('profilePictureForm');
             const formData = new FormData(form);
-
-            fetch('{{ url_for("profile") }}', {
+        
+            fetch('{{ url_for("upload_profile_picture") }}', {
                 method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                body: formData
             })
             .then(response => {
                 if (!response.ok) {
@@ -69,8 +66,8 @@
                     // Show error message
                     alert(data.message);
                 } else {
-                    // Optionally update the profile picture dynamically
-                    document.querySelector('.profile-picture').src = URL.createObjectURL(formData.get('profile_picture'));
+                    // Reload the page to reflect the updated profile picture
+                    location.reload(); // Reload the page
                 }
             })
             .catch(error => {

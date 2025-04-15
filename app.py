@@ -87,50 +87,43 @@ def upload_profile_picture():
     if 'user_id' in session:
         user = db.session.get(User, session['user_id'])
         if 'profile_picture' not in request.files:
-            return redirect(url_for('index'))
+            return {'status': 'error', 'message': 'Ingen fil valgt.'}, 400
         
         file = request.files['profile_picture']
         if file.filename == '':
-            return redirect(url_for('index'))
+            return {'status': 'error', 'message': 'Ingen fil valgt.'}, 400
         
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             
             try:
-                # Slet kun brugerens gamle profilbillede, hvis det findes, og ikke er standardbilledet
+                # Delete the old profile picture if it exists and is not the default
                 if user.profile_picture and user.profile_picture != User.default_profile_picture:
                     old_filepath = os.path.join(os.getcwd(), user.profile_picture)
                     if os.path.exists(old_filepath):
                         os.remove(old_filepath)
                 
-                # Gem den nye fil
+                # Save the new file
                 file.save(filepath)
                 
-                # Åbn billedet og gør det mindre
+                # Resize the image to a maximum of 300x300 pixels
                 with Image.open(filepath) as img:
-                    img = img.convert("RGB")  # Sikrer, at billedet er i RGB-format
-                    img.thumbnail((300, 300))  # Sæt maks. størrelse til 300x300 pixels
-                    img.save(filepath, "JPEG", quality=85)  # Gem som JPEG med 85% kvalitet
+                    img = img.convert("RGB")  # Ensure the image is in RGB format
+                    img.thumbnail((300, 300))  # Resize to max 300x300 pixels
+                    img.save(filepath, "JPEG", quality=85)  # Save as JPEG with 85% quality
                 
-                # Opdater brugerens profilbillede i databasen
-                user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Gem relativ sti
+                # Update the user's profile picture in the database
+                user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Save relative path
                 db.session.commit()
                 
-                # Removed the flash message here
-                # flash('Profilbillede opdateret!', 'success')
+                return {'status': 'success', 'image_url': url_for('static', filename=user.profile_picture)}, 200
             except Exception as e:
-                # Hvis der opstår en fejl (f.eks. forkert format)
                 app.logger.error(f"Fejl under upload af profilbillede: {e}")
-                flash('Formatet på billedet understøttes ikke. Prøv igen med en PNG, JPG eller JPEG.', 'danger')
-                return redirect(url_for('index'))
-            
-            return redirect(url_for('index'))
-        else:
-            flash('Formatet på billedet understøttes ikke. Prøv igen med en PNG, JPG eller JPEG.', 'danger')
-            return redirect(url_for('index'))
-    flash('Du skal være logget ind for at uploade et billede.', 'danger')
-    return redirect(url_for('login'))
+                return {'status': 'error', 'message': 'Der opstod en fejl under upload af billedet.'}, 500
+        
+        return {'status': 'error', 'message': 'Formatet på billedet understøttes ikke. Kun png, jpg og jpeg understøttes'}, 400
+    return {'status': 'error', 'message': 'Du skal være logget ind for at uploade et billede.'}, 401
 
 @app.route('/send_friend_request/<int:friend_id>', methods=['POST'])
 def send_friend_request(friend_id):
@@ -486,10 +479,10 @@ def friends():
     if not user:
         return redirect(url_for('login'))
 
-    # Hent brugerens venner
+    # Fetch the user's friends
     friends = []
     for friendship in Friendship.query.filter(
-        ((Friendship.user_id == user.id) | (Friendship.friend_id == user.id)) & 
+        ((Friendship.user_id == user.id) | (Friendship.friend_id == user.id)) &
         (Friendship.status == 'accepted')
     ).all():
         if friendship.user_id == user.id:
@@ -510,7 +503,7 @@ def friends():
             'created_at': friendship.created_at.strftime('%d-%m-%Y')
         })
 
-    # Hent venneanmodninger
+    # Fetch friend requests
     friend_requests = []
     for friendship in Friendship.query.filter_by(friend_id=user.id, status='pending').all():
         requester = friendship.user
@@ -520,21 +513,24 @@ def friends():
             'profile_picture': requester.profile_picture or 'static/icon-5355896_640.png'
         })
 
-    # Håndter søgning
+    # Handle search functionality
     search_results = []
     if request.method == 'POST':
         search_username = request.form['username']
-        search_results_query = User.query.filter(User.username.ilike(f'%{search_username}%')).all()
+        search_results_query = User.query.filter(
+            User.username.ilike(f'%{search_username}%'),
+            User.id != user.id  # Exclude the logged-in user
+        ).all()
 
         for result in search_results_query:
-            # Udeluk brugere, der allerede er venner
+            # Exclude users who are already friends
             friendship = Friendship.query.filter(
                 ((Friendship.user_id == user.id) & (Friendship.friend_id == result.id)) |
                 ((Friendship.user_id == result.id) & (Friendship.friend_id == user.id))
             ).first()
 
             if friendship and friendship.status == 'accepted':
-                continue  # Spring over brugere, der allerede er venner
+                continue  # Skip users who are already friends
 
             if friendship:
                 if friendship.status == 'pending' and friendship.user_id == user.id:

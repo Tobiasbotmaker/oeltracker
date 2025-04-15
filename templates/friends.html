@@ -216,6 +216,36 @@
                 </div>
             </div>
         </div>
+        {% if request.method == 'POST' and search_results %}
+        <h2 class="mt-4">Resultater</h2>
+        <ul class="list-group mb-3">
+            {% for result in search_results %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span class="d-flex align-items-center">
+                    <img src="{{ result.profile_picture }}" 
+                         alt="Profilbillede" 
+                         class="rounded-circle mr-3" 
+                         style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                         onclick="openProfileModal('{{ result.profile_picture }}', '{{ result.username }}')">
+                    {{ result.username }}
+                </span>
+                {% if result.status == 'none' %}
+                <button class="btn btn-primary btn-sm" onclick="addFriend({{ result.id }}, this)">Send anmodning</button>
+                {% elif result.status == 'pending_sent' %}
+                <button class="btn btn-warning btn-sm" onclick="cancelFriendRequest({{ result.id }}, this)">Annuller anmodning</button>
+                {% elif result.status == 'pending_received' %}
+                <button class="btn btn-success btn-sm" onclick="acceptFriendRequest({{ result.id }})">Accepter</button>
+                <button class="btn btn-danger btn-sm" onclick="rejectFriendRequest({{ result.id }})">Afvis</button>
+                {% elif result.status == 'accepted' %}
+                <button class="btn btn-secondary btn-sm" disabled>Allerede venner</button>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% elif request.method == 'POST' %}
+        <h2 class="mt-4">Resultater</h2>
+        <p class="text-muted">Ingen resultater</p>
+        {% endif %}
 
         <!-- Sektion for dine venner -->
         <h2 class="mt-4">Dine venner</h2>
@@ -223,11 +253,11 @@
             {% for friend in friends %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span class="d-flex align-items-center">
-                    <img src="{% if friend.profile_picture %}{{ friend.profile_picture }}{% else %}{{ url_for('static', filename='icon-5355896_640.png') }}{% endif %}" 
+                    <img src="{{ friend.profile_picture }}" 
                          alt="Profilbillede" 
                          class="rounded-circle mr-3" 
                          style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
-                         onclick="openProfileModal('{% if friend.profile_picture %}{{ friend.profile_picture }}{% else %}{{ url_for('static', filename='icon-5355896_640.png') }}{% endif %}', '{{ friend.username }}')">
+                         onclick="openProfileModal('{{ friend.profile_picture }}', '{{ friend.username }}')">
                     {{ friend.username }}
                     {% if friend.total_beers > 0 %}
                         - Øl drukket: {{ friend.total_beers }}
@@ -244,33 +274,6 @@
             {% endfor %}
         </ul>
     </form>
-    {% if search_results %}
-    <h2 class="mt-4">Resultater</h2>
-    <ul class="list-group mb-3">
-        {% for result in search_results %}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span class="d-flex align-items-center">
-                <img src="{{ result.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                     alt="Profilbillede" 
-                     class="rounded-circle mr-3" 
-                     style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
-                     onclick="openProfileModal('{{ result.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ result.username }}')">
-                {{ result.username }}
-            </span>
-            {% if result.status == 'none' %}
-            <button class="btn btn-primary btn-sm" onclick="addFriend({{ result.id }}, this)">Send anmodning</button>
-            {% elif result.status == 'pending_sent' %}
-            <button class="btn btn-warning btn-sm" onclick="cancelFriendRequest({{ result.id }}, this)">Annuller anmodning</button>
-            {% elif result.status == 'pending_received' %}
-            <button class="btn btn-success btn-sm" onclick="acceptFriendRequest({{ result.id }})">Accepter</button>
-            <button class="btn btn-danger btn-sm" onclick="rejectFriendRequest({{ result.id }})">Afvis</button>
-            {% elif result.status == 'accepted' %}
-            <button class="btn btn-secondary btn-sm" disabled>Allerede venner</button>
-            {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
-    {% endif %}
     <h2 class="mt-4">Venneanmodninger</h2>
     <ul class="list-group mb-3">
         {% if friend_requests %}
