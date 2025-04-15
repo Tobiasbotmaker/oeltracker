@@ -151,7 +151,7 @@
             <p class="text-danger">{{ cooldown_message }}</p>
         {% else %}
             <!-- Display the form if no cooldown is active -->
-            <form id="changeUsernameForm" method="post" action="{{ url_for('change_username') }}">
+            <form id="changeUsernameForm" method="post" action="{{ url_for('change_username') }}" onsubmit="return confirmUsernameChange()">
                 <div class="form-group">
                     <input 
                         type="text" 
@@ -160,11 +160,18 @@
                         placeholder="Indtast nyt brugernavn" 
                         required 
                         autocomplete="off">
+                    <input type="hidden" name="confirm_change" value="1"> <!-- Hidden confirmation field -->
                 </div>
                 <button type="submit" class="btn btn-primary">Opdater brugernavn</button>
             </form>
         {% endif %}
     </div>
+    
+    <script>
+        function confirmUsernameChange() {
+            return confirm("Er du sikker på at du vil ændre dit navn? Der vil gå 7 dage før du kan ændre det igen.");
+        }
+    </script>
     <div>
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
     </div>

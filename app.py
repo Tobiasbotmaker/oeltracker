@@ -769,6 +769,7 @@ def change_username():
         return redirect(url_for('login'))
 
     new_username = request.form.get('new_username')
+    confirm_change = request.form.get('confirm_change')  # Check for confirmation
     if not new_username:
         flash('Brugernavn må ikke være tomt.', 'danger')
         return redirect(url_for('profile'))
@@ -781,7 +782,6 @@ def change_username():
     # Check if the username is already taken
     existing_user = User.query.filter_by(username=new_username).first()
     if existing_user:
-        # Use flash for the "Brugernavnet er allerede taget" message
         flash('Brugernavnet er allerede taget. Vælg venligst et andet.', 'danger')
         return redirect(url_for('profile'))
 
@@ -796,14 +796,17 @@ def change_username():
             )
             return redirect(url_for('profile'))
 
+    # If confirmation is not provided, show the warning
+    if not confirm_change:
+        flash('Er du sikker på at du vil ændre dit navn? Der vil gå 7 dage før du kan ændre det igen.', 'warning')
+        return redirect(url_for('profile'))
+
     # Update the username and last_username_change timestamp
     user.username = new_username
     user.last_username_change = datetime.utcnow()
     db.session.commit()
 
-    # Removed the success flash message
-    # flash('Dit brugernavn er blevet opdateret!', 'success')
-
+    flash('Dit brugernavn er blevet opdateret!', 'success')
     return redirect(url_for('profile'))
     
 @app.route('/about')
