@@ -80,20 +80,30 @@
     </script>
 </head>
 <body class="container d-flex flex-column">
-    <nav class="navbar fixed-top">
+    <nav class="navbar fixed-top d-flex justify-content-between">
         <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
-        <div class="dropdown">
-            <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
-                <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
-                <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
-                <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-                <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
-                <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
+        <div class="d-flex align-items-center">
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
+                    <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
+                    <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
+                    <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
+                    <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
+                    <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
+                    <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
+                </div>
             </div>
+            <a href="{{ url_for('profile') }}">
+                <img 
+                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                    alt="Profilbillede" 
+                    class="profile-picture"
+                    id="profilePicture"
+                >
+            </a>
         </div>
     </nav>
     <br>

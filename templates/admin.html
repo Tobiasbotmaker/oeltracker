@@ -4,9 +4,37 @@
     <title>Admin Page</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Style for the profile pictures in the admin table */
+        .admin-profile-picture {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+    </style>
+    <script>
+        // Confirmation for deleting a single user
+        function confirmDelete(username) {
+            return confirm(`Er du sikker på, at du vil slette brugeren "${username}"?`);
+        }
+
+        // Confirmation for deleting all users
+        function confirmDeleteAll() {
+            return confirm("Er du sikker på, at du vil slette alle brugere? Denne handling kan ikke fortrydes.");
+        }
+    </script>
 </head>
 <body class="container">
     <h1 class="mt-5">Admin Page</h1>
+    <div class="d-flex justify-content-between mb-3">
+        <h2>Brugere</h2>
+        <!-- Delete All Button -->
+        <form action="{{ url_for('delete_all_users') }}" method="post" onsubmit="return confirmDeleteAll();">
+            <button type="submit" class="btn btn-danger">Slet Alle Brugere</button>
+        </form>
+    </div>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -17,16 +45,24 @@
         <tbody>
             {% for user in users %}
             <tr>
-                <td>{{ user.username }}</td>
                 <td>
-                    <form action="{{ url_for('delete_user', user_id=user.id) }}" method="post">
-                        <button type="submit" class="btn btn-danger">Delete</button>
+                    <!-- Display the user's profile picture -->
+                    <img 
+                        src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                        alt="Profilbillede" 
+                        class="admin-profile-picture">
+                    {{ user.username }}
+                </td>
+                <td>
+                    <!-- Delete Single User Button -->
+                    <form action="{{ url_for('delete_user', user_id=user.id) }}" method="post" onsubmit="return confirmDelete('{{ user.username }}');">
+                        <button type="submit" class="btn btn-danger">Slet</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Home</a>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage til Forsiden</a>
 </body>
 </html>

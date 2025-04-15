@@ -20,22 +20,6 @@
             }
         }
 
-        function openPopup() {
-            document.getElementById("profilePopup").style.display = "block";
-        }
-    
-        function closePopup() {
-            document.getElementById("profilePopup").style.display = "none";
-        }
-    
-        // Luk popup, hvis brugeren klikker uden for den
-        window.onclick = function(event) {
-            var popup = document.getElementById("profilePopup");
-            if (event.target == popup) {
-                popup.style.display = "none";
-            }
-        }
-
         setTimeout(function() {
             var flashContainer = document.querySelector('.flash-container');
             if (flashContainer) {
@@ -162,23 +146,6 @@
                     id="profilePicture"
                 >
             </a>
-        <div id="profilePopup" class="popup">
-            <div class="popup-content">
-                <span class="close" onclick="closePopup()">&times;</span>
-                <img 
-                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                    alt="Profilbillede" 
-                    class="popup-profile-picture"
-                >
-                <form id="uploadForm" action="{{ url_for('upload_profile_picture') }}" method="POST" enctype="multipart/form-data">
-                    <input type="file" id="fileInput" name="profile_picture" accept="image/*" class="form-control mb-3">
-                    <button type="submit" class="btn btn-primary">Upload billede</button>
-                </form>
-            </div>
-        </div>
-        <form id="uploadForm" action="{{ url_for('upload_profile_picture') }}" method="POST" enctype="multipart/form-data" style="display: none;">
-            <input type="file" id="fileInput" name="profile_picture" accept="image/*" onchange="document.getElementById('uploadForm').submit()">
-        </form>
         </div>
     </nav>
     <div class="flex-grow-1 beer-background">

@@ -39,6 +39,7 @@ class User(db.Model):
     __table_args__ = {'extend_existing': True}
     profile_picture = db.Column(db.String(300), nullable=True)  # Sti til profilbillede
     default_profile_picture = 'static/icon-5355896_640.png'
+    last_username_change = db.Column(db.DateTime, nullable=True)  # Add this field
     
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -317,52 +318,66 @@ def add_beer():
 def profile():
     # Ensure the user is logged in
     if 'user_id' not in session:
-        return {'status': 'danger', 'message': 'Du skal være logget ind for at se din profil.'}, 401
+        flash('Du skal være logget ind for at se din profil.', 'danger')
+        return redirect(url_for('login'))
 
     # Retrieve the logged-in user
     user = db.session.get(User, session['user_id'])
     if not user:
-        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
+        flash('Bruger ikke fundet.', 'danger')
+        return redirect(url_for('login'))
 
     if request.method == 'POST':
         # Handle profile picture upload
-        if 'profile_picture' not in request.files or request.files['profile_picture'].filename == '':
-            return {'status': 'warning', 'message': 'Ingen fil valgt.'}, 400
+        if 'profile_picture' in request.files and request.files['profile_picture'].filename != '':
+            file = request.files['profile_picture']
+            if not allowed_file(file.filename):
+                flash('Formatet på billedet understøttes ikke. Prøv igen med en PNG, JPG eller JPEG.', 'danger')
+                return redirect(url_for('profile'))
 
-        file = request.files['profile_picture']
-        if not allowed_file(file.filename):
-            return {'status': 'danger', 'message': 'Formatet på billedet understøttes ikke. Prøv igen med en PNG, JPG eller JPEG.'}, 400
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            try:
+                # Delete the old profile picture if it exists and is not the default
+                if user.profile_picture and user.profile_picture != User.default_profile_picture:
+                    old_filepath = os.path.join(os.getcwd(), user.profile_picture)
+                    if os.path.exists(old_filepath):
+                        os.remove(old_filepath)
 
-        try:
-            # Delete the old profile picture if it exists and is not the default
-            if user.profile_picture and user.profile_picture != User.default_profile_picture:
-                old_filepath = os.path.join(os.getcwd(), user.profile_picture)
-                if os.path.exists(old_filepath):
-                    os.remove(old_filepath)
+                # Save the new file
+                file.save(filepath)
 
-            # Save the new file
-            file.save(filepath)
+                # Resize the image to a maximum of 300x300 pixels
+                with Image.open(filepath) as img:
+                    img = img.convert("RGB")  # Ensure the image is in RGB format
+                    img.thumbnail((300, 300))  # Resize to max 300x300 pixels
+                    img.save(filepath, "JPEG", quality=85)  # Save as JPEG with 85% quality
 
-            # Resize the image to a maximum of 300x300 pixels
-            with Image.open(filepath) as img:
-                img = img.convert("RGB")  # Ensure the image is in RGB format
-                img.thumbnail((300, 300))  # Resize to max 300x300 pixels
-                img.save(filepath, "JPEG", quality=85)  # Save as JPEG with 85% quality
+                # Update the user's profile picture in the database
+                user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Save relative path
+                db.session.commit()
 
-            # Update the user's profile picture in the database
-            user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Save relative path
-            db.session.commit()
+                flash('Profilbillede opdateret!', 'success')
+            except Exception as e:
+                app.logger.error(f"Fejl under upload af profilbillede: {e}")
+                flash('Der opstod en fejl under upload af billedet. Prøv igen.', 'danger')
+                return redirect(url_for('profile'))
 
-            return {'status': 'success'}, 200
-        except Exception as e:
-            app.logger.error(f"Fejl under upload af profilbillede: {e}")
-            return {'status': 'danger', 'message': 'Der opstod en fejl under upload af billedet. Prøv igen.'}, 500
+    # Calculate cooldown for username change
+    cooldown_message = None
+    if user.last_username_change:
+        cooldown_end = user.last_username_change + timedelta(days=7)
+        if datetime.utcnow() < cooldown_end:
+            remaining_time = cooldown_end - datetime.utcnow()
+            cooldown_message = f"Du kan skifte dit brugernavn igen om {remaining_time.days} dage og {remaining_time.seconds // 3600} timer."
 
     # Render the profile page
-    return render_template('profile.html', user=user)
+    return render_template(
+        'profile.html',
+        user=user,
+        cooldown_message=cooldown_message
+    )
 
 @app.route('/delete_account', methods=['GET', 'POST'])
 def delete_account():
@@ -406,17 +421,28 @@ def admin():
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
-    if session.get('is_admin'):  # Tjek om brugeren er admin
+    if session.get('is_admin'):  # Check if the user is an admin
         user = db.session.get(User, user_id)
-        if user:  # Tjekker kun, om brugeren findes
+        if user:  # Ensure the user exists
             try:
-                # Slet tilknyttede BeerLog-poster
+                # Delete the user's profile picture if it exists and is not the default
+                if user.profile_picture and user.profile_picture != User.default_profile_picture:
+                    profile_picture_path = os.path.join(os.getcwd(), user.profile_picture)
+                    if os.path.exists(profile_picture_path):
+                        os.remove(profile_picture_path)
+
+                # Delete all BeerLog entries for the user
                 BeerLog.query.filter_by(user_id=user.id).delete()
-                # Slet tilknyttede Friendship-poster
-                Friendship.query.filter((Friendship.user_id == user.id) | (Friendship.friend_id == user.id)).delete()
-                # Slet brugeren
+
+                # Delete all friendships involving the user
+                Friendship.query.filter(
+                    (Friendship.user_id == user.id) | (Friendship.friend_id == user.id)
+                ).delete()
+
+                # Delete the user
                 db.session.delete(user)
                 db.session.commit()
+
                 flash(f'Brugeren "{user.username}" blev slettet.', 'success')
             except Exception as e:
                 db.session.rollback()
@@ -424,6 +450,29 @@ def delete_user(user_id):
                 flash('Der opstod en fejl under sletningen af brugeren.', 'danger')
         else:
             flash('Brugeren blev ikke fundet.', 'warning')
+    else:
+        flash('Du har ikke tilladelse til at udføre denne handling.', 'danger')
+    return redirect(url_for('admin'))
+
+@app.route('/delete_all_users', methods=['POST'])
+def delete_all_users():
+    if session.get('is_admin'):  # Ensure only admins can delete all users
+        try:
+            # Delete all BeerLogs
+            BeerLog.query.delete()
+
+            # Delete all Friendships
+            Friendship.query.delete()
+
+            # Delete all Users
+            User.query.delete()
+
+            db.session.commit()
+            flash('Alle brugere blev slettet.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Fejl ved sletning af alle brugere: {e}")
+            flash('Der opstod en fejl under sletningen af alle brugere.', 'danger')
     else:
         flash('Du har ikke tilladelse til at udføre denne handling.', 'danger')
     return redirect(url_for('admin'))
@@ -645,17 +694,29 @@ def map():
                 } for log in all_logs if log.latitude and log.longitude
             ]
 
+            # Pass the user object to the template
             return render_template(
                 'map.html',
+                user=user,  # Pass the user object
                 user_logs=user_logs_serializable,
                 friends_logs=friends_logs_serializable,
                 all_logs=all_logs_serializable
             )
+    flash('Du skal være logget ind for at se kortet.', 'danger')
     return redirect(url_for('login'))
 
 @app.route('/settings')
 def settings():
-    return render_template('settings.html')
+    if 'user_id' not in session:
+        flash('Du skal være logget ind for at se indstillingerne.', 'danger')
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        flash('Bruger ikke fundet.', 'danger')
+        return redirect(url_for('login'))
+
+    return render_template('settings.html', user=user)
 
 @app.route('/leaderboard')
 def leaderboard():
@@ -705,13 +766,75 @@ def leaderboard():
         flash('Du skal være logget ind for at se leaderboardet.', 'danger')
         return redirect(url_for('login'))
     
+@app.route('/change_username', methods=['POST'])
+def change_username():
+    if 'user_id' not in session:
+        flash('Du skal være logget ind for at ændre dit brugernavn.', 'danger')
+        return redirect(url_for('login'))
+
+    new_username = request.form.get('new_username')
+    if not new_username:
+        flash('Brugernavn må ikke være tomt.', 'danger')
+        return redirect(url_for('profile'))
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        flash('Bruger ikke fundet.', 'danger')
+        return redirect(url_for('profile'))
+
+    # Check if the username is already taken
+    existing_user = User.query.filter_by(username=new_username).first()
+    if existing_user:
+        # Use flash for the "Brugernavnet er allerede taget" message
+        flash('Brugernavnet er allerede taget. Vælg venligst et andet.', 'danger')
+        return redirect(url_for('profile'))
+
+    # Check for cooldown
+    if user.last_username_change:
+        cooldown_end = user.last_username_change + timedelta(days=7)
+        if datetime.utcnow() < cooldown_end:
+            remaining_time = cooldown_end - datetime.utcnow()
+            flash(
+                f'Du kan skifte dit brugernavn igen om {remaining_time.days} dage og {remaining_time.seconds // 3600} timer.',
+                'danger'
+            )
+            return redirect(url_for('profile'))
+
+    # Update the username and last_username_change timestamp
+    user.username = new_username
+    user.last_username_change = datetime.utcnow()
+    db.session.commit()
+
+    # Removed the success flash message
+    # flash('Dit brugernavn er blevet opdateret!', 'success')
+
+    return redirect(url_for('profile'))
+    
 @app.route('/about')
 def about():
-    return render_template('about.html')
+    if 'user_id' not in session:
+        flash('Du skal være logget ind for at se denne side.', 'danger')
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        flash('Bruger ikke fundet.', 'danger')
+        return redirect(url_for('login'))
+
+    return render_template('about.html', user=user)
 
 @app.route('/which_beer')
 def which_beer():
-    return render_template('which_beer.html')
+    if 'user_id' not in session:
+        flash('Du skal være logget ind for at se denne side.', 'danger')
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        flash('Bruger ikke fundet.', 'danger')
+        return redirect(url_for('login'))
+
+    return render_template('which_beer.html', user=user)
 
 if __name__ == '__main__':
     with app.app_context():
