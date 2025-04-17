@@ -24,31 +24,12 @@
         }
     </style>
     <script>
-        function openProfileModal(profilePicture, username, userId, status) {
-            console.log('openProfileModal kaldt med:', profilePicture, username, userId, status);
+        function openProfileModal(profilePicture, username) {
+            console.log('Åbner profilmodal for:', username);
         
             // Indsæt data i modal
             document.getElementById('modalProfilePicture').src = profilePicture;
             document.getElementById('modalUsername').textContent = username;
-            document.getElementById('modalFriendId').value = userId;
-        
-            const addFriendForm = document.getElementById('addFriendForm');
-            const addFriendButton = addFriendForm.querySelector('button[type="submit"]');
-        
-            // Opdater knap og form action baseret på status
-            if (status === 'none') {
-                addFriendButton.textContent = 'Tilføj som ven';
-                addFriendButton.className = 'btn btn-primary';
-                addFriendForm.action = `/send_friend_request/${userId}`;
-            } else if (status === 'pending_sent') {
-                addFriendButton.textContent = 'Annuller anmodning';
-                addFriendButton.className = 'btn btn-warning';
-                addFriendForm.action = `/cancel_friend_request/${userId}`;
-            } else if (status === 'accepted') {
-                addFriendButton.textContent = 'Allerede venner';
-                addFriendButton.className = 'btn btn-secondary';
-                addFriendButton.disabled = true;
-            }
         
             // Vis modal
             $('#profileModal').modal('show');
@@ -60,21 +41,236 @@
             fetch(`/send_friend_request/${friendId}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
                 }
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    button.textContent = 'Annuller anmodning';
-                    button.classList.remove('btn-primary');
-                    button.classList.add('btn-warning');
-                    button.setAttribute('onclick', `cancelFriendRequest(${friendId}, this)`);
+                    // Find alle forekomster af brugeren i DOM'en
+                    const userContainers = document.querySelectorAll(`[data-user-id="${friendId}"]`);
+        
+                    // Opdater alle forekomster
+                    userContainers.forEach(container => {
+                        container.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <img 
+                                    src="${container.querySelector('img').src}" 
+                                    alt="Profilbillede" 
+                                    class="rounded-circle mr-2" 
+                                    style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                                    onclick="openProfileModal('${container.querySelector('img').src}', '${container.querySelector('span').textContent}')">
+                                <span>${container.querySelector('span').textContent}</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-warning btn-sm" onclick="cancelFriendRequest(${friendId}, this)">Annuller anmodning</button>
+                            </div>
+                        `;
+                    });
+                } else {
+                    alert(data.message);
                 }
-                button.disabled = false;
             })
             .catch(error => {
                 console.error('Netværksfejl:', error);
+                alert('Der opstod en fejl under behandlingen af venneanmodningen.');
+            })
+            .finally(() => {
+                button.disabled = false;
+            });
+        }
+        
+        function cancelFriendRequest(friendId, button) {
+            button.disabled = true;
+        
+            fetch(`/cancel_friend_request/${friendId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Find alle forekomster af brugeren i DOM'en
+                    const userContainers = document.querySelectorAll(`[data-user-id="${friendId}"]`);
+        
+                    // Opdater alle forekomster
+                    userContainers.forEach(container => {
+                        container.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <img 
+                                    src="${container.querySelector('img').src}" 
+                                    alt="Profilbillede" 
+                                    class="rounded-circle mr-2" 
+                                    style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                                    onclick="openProfileModal('${container.querySelector('img').src}', '${container.querySelector('span').textContent}')">
+                                <span>${container.querySelector('span').textContent}</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-primary btn-sm" onclick="addFriend(${friendId}, this)">Send anmodning</button>
+                            </div>
+                        `;
+                    });
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
+                alert('Der opstod en fejl under behandlingen af venneanmodningen.');
+            })
+            .finally(() => {
+                button.disabled = false;
+            });
+        }
+        
+        function acceptFriendRequest(friendshipId, button) {
+            button.disabled = true;
+        
+            fetch(`/accept_friend_request/${friendshipId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Find alle forekomster af brugeren i DOM'en
+                    const userId = button.closest('.d-flex.justify-content-between').dataset.userId;
+                    const userContainers = document.querySelectorAll(`[data-user-id="${userId}"]`);
+        
+                    // Opdater alle forekomster
+                    userContainers.forEach(container => {
+                        container.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <img 
+                                    src="${container.querySelector('img').src}" 
+                                    alt="Profilbillede" 
+                                    class="rounded-circle mr-2" 
+                                    style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                                    onclick="openProfileModal('${container.querySelector('img').src}', '${container.querySelector('span').textContent}')">
+                                <span>${container.querySelector('span').textContent}</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-danger btn-sm" onclick="removeFriend(${friendshipId}, this)">Fjern ven</button>
+                            </div>
+                        `;
+                    });
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
+                alert('Der opstod en fejl under behandlingen af venneanmodningen.');
+            })
+            .finally(() => {
+                button.disabled = false;
+            });
+        }
+        
+        function rejectFriendRequest(friendshipId, button) {
+            button.disabled = true;
+        
+            fetch(`/reject_friend_request/${friendshipId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Find alle forekomster af brugeren i DOM'en
+                    const userId = button.closest('.d-flex.justify-content-between').dataset.userId;
+                    const userContainers = document.querySelectorAll(`[data-user-id="${userId}"]`);
+        
+                    // Opdater alle forekomster
+                    userContainers.forEach(container => {
+                        container.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <img 
+                                    src="${container.querySelector('img').src}" 
+                                    alt="Profilbillede" 
+                                    class="rounded-circle mr-2" 
+                                    style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                                    onclick="openProfileModal('${container.querySelector('img').src}', '${container.querySelector('span').textContent}')">
+                                <span>${container.querySelector('span').textContent}</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-primary btn-sm" onclick="addFriend(${userId}, this)">Send anmodning</button>
+                            </div>
+                        `;
+                    });
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Netværksfejl:', error);
+                alert('Der opstod en fejl under afvisningen af venneanmodningen.');
+            })
+            .finally(() => {
+                button.disabled = false;
+            });
+        }
+        
+        function removeFriend(friendshipId, button) {
+            button.disabled = true;
+        
+            fetch(`/remove_friend/${friendshipId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Der opstod en fejl under fjernelsen af vennen.');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    // Find alle forekomster af brugeren i DOM'en
+                    const userId = button.closest('.d-flex.justify-content-between').dataset.userId;
+                    const userContainers = document.querySelectorAll(`[data-user-id="${userId}"]`);
+        
+                    // Opdater alle forekomster
+                    userContainers.forEach(container => {
+                        container.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <img 
+                                    src="${container.querySelector('img').src}" 
+                                    alt="Profilbillede" 
+                                    class="rounded-circle mr-2" 
+                                    style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                                    onclick="openProfileModal('${container.querySelector('img').src}', '${container.querySelector('span').textContent}')">
+                                <span>${container.querySelector('span').textContent}</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-primary btn-sm" onclick="addFriend(${userId}, this)">Send anmodning</button>
+                            </div>
+                        `;
+                    });
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Fejl:', error.message);
+                alert(error.message);
+            })
+            .finally(() => {
                 button.disabled = false;
             });
         }
@@ -88,50 +284,73 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             const addFriendForm = document.getElementById('addFriendForm');
-        
-            addFriendForm.addEventListener('submit', function (event) {
-                event.preventDefault(); // Forhindrer standardformularindsendelse
-        
-                const friendId = document.getElementById('modalFriendId').value;
-        
-                // Send anmodning til serveren for at tilføje eller annullere venneanmodning
-                fetch(addFriendForm.action, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        const addFriendButton = document.querySelector('#addFriendForm button[type="submit"]');
-        
-                        if (addFriendButton.textContent === 'Tilføj som ven') {
-                            // Skift til "Annuller anmodning"
-                            addFriendButton.textContent = 'Annuller anmodning';
-                            addFriendButton.classList.remove('btn-primary');
-                            addFriendButton.classList.add('btn-warning');
-                            addFriendForm.action = `/cancel_friend_request/${friendId}`;
-                        } else if (addFriendButton.textContent === 'Annuller anmodning') {
-                            // Skift tilbage til "Tilføj som ven"
-                            addFriendButton.textContent = 'Tilføj som ven';
-                            addFriendButton.classList.remove('btn-warning');
-                            addFriendButton.classList.add('btn-primary');
-                            addFriendForm.action = `/add_friend/${friendId}`;
+            
+            if (addFriendForm) { // Tjek om elementet findes
+                addFriendForm.addEventListener('submit', function (event) {
+                    event.preventDefault(); // Forhindrer standardformularindsendelse
+            
+                    const friendId = document.getElementById('modalFriendId').value;
+            
+                    // Send anmodning til serveren for at tilføje eller annullere venneanmodning
+                    fetch(addFriendForm.action, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
                         }
-        
-                        alert(data.message);
-                        $('#profileModal').modal('hide'); // Luk modal
-                    } else {
-                        alert('Der opstod en fejl: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Netværksfejl:', error);
-                    alert('Der opstod en fejl under behandlingen af venneanmodningen.');
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            const addFriendButton = addFriendForm.querySelector('button[type="submit"]');
+            
+                            // Opdater knappen i modalvinduet
+                            if (data.new_status === 'pending_sent') {
+                                addFriendButton.textContent = 'Annuller anmodning';
+                                addFriendButton.className = 'btn btn-warning';
+                                addFriendForm.action = `/cancel_friend_request/${friendId}`;
+                            } else if (data.new_status === 'none') {
+                                addFriendButton.textContent = 'Send venneanmodning';
+                                addFriendButton.className = 'btn btn-primary';
+                                addFriendForm.action = `/send_friend_request/${friendId}`;
+                            }
+            
+                        } else {
+                            alert(data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Netværksfejl:', error);
+                        alert('Der opstod en fejl under behandlingen af venneanmodningen.');
+                    });
                 });
-            });
+            }
         });
+
+        function updatePopupStatus(status, userId, friendshipId) {
+            const addFriendForm = document.getElementById('addFriendForm');
+            const addFriendButton = addFriendForm.querySelector('button[type="submit"]');
+        
+            if (status === 'none') {
+                addFriendButton.textContent = 'Send venneanmodning';
+                addFriendButton.className = 'btn btn-primary';
+                addFriendForm.action = `/send_friend_request/${userId}`;
+            } else if (status === 'pending_sent') {
+                addFriendButton.textContent = 'Annuller anmodning';
+                addFriendButton.className = 'btn btn-warning';
+                addFriendForm.action = `/cancel_friend_request/${userId}`;
+            } else if (status === 'pending_received') {
+                addFriendButton.textContent = 'Accepter anmodning';
+                addFriendButton.className = 'btn btn-success';
+                addFriendForm.action = `/accept_friend_request/${friendshipId}`;
+            } else if (status === 'remove_friend') {
+                addFriendButton.textContent = 'Fjern ven';
+                addFriendButton.className = 'btn btn-danger';
+                addFriendButton.onclick = function () {
+                    removeFriend(friendshipId, this);
+                };
+            }
+        }
     </script>
 </head>
 <body class="container d-flex flex-column">
@@ -184,14 +403,34 @@
                     <tr>
                         <td>{{ loop.index }}</td>
                         <td>
-                            <img 
-                            src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                            alt="Profilbillede" 
-                            class="leaderboard-profile-picture"
-                            style="cursor: pointer;" 
-                            onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}', {{ user.id }}, '{{ user.status }}')"
-                        >
-                            {{ user.username }}
+                            <div class="d-flex justify-content-between align-items-center" data-user-id="{{ user.id }}">
+                                <!-- Profilbillede og brugernavn -->
+                                <div class="d-flex align-items-center">
+                                    <img 
+                                        src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                                        alt="Profilbillede" 
+                                        class="rounded-circle mr-2" 
+                                        style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
+                                        onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}')">
+                                    <span>{{ user.username }}</span>
+                                </div>
+                            
+                                <!-- Knapper -->
+                                {% if user.id != session['user_id'] %}
+                                <div>
+                                    {% if user.status == 'none' %}
+                                    <button class="btn btn-primary btn-sm" onclick="addFriend({{ user.id }}, this)">Send anmodning</button>
+                                    {% elif user.status == 'pending_sent' %}
+                                    <button class="btn btn-warning btn-sm" onclick="cancelFriendRequest({{ user.id }}, this)">Annuller anmodning</button>
+                                    {% elif user.status == 'pending_received' %}
+                                    <button class="btn btn-success btn-sm" onclick="acceptFriendRequest({{ user.friendship_id }}, this)">Accepter</button>
+                                    <button class="btn btn-danger btn-sm" onclick="rejectFriendRequest({{ user.friendship_id }}, this)">Afvis</button>
+                                    {% elif user.status == 'accepted' %}
+                                    <button class="btn btn-danger btn-sm" onclick="removeFriend({{ user.friendship_id }}, this)">Fjern ven</button>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
                         </td>
                         <td>{{ user.total_beers }}</td>
                     </tr>
@@ -217,18 +456,11 @@
                     <p id="modalUsername" class="mt-3"></p>
                 </div>
                 <div class="modal-footer">
-                    <form method="post" id="addFriendForm">
-                        <button type="submit" class="btn btn-primary">Tilføj som ven</button>
-                    </form>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Luk</button>
                 </div>
             </div>
         </div>
     </div>
-    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#profileModal">
-        Åbn Modal
-    </button>
-
     <div class="text-left">
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
     </div>

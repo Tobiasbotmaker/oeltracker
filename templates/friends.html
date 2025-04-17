@@ -69,34 +69,41 @@
         }
 
         function cancelFriendRequest(friendId, button) {
+            console.log(`cancelFriendRequest kaldt med friendId: ${friendId}`); // Debug
             button.disabled = true;
         
             fetch(`/cancel_friend_request/${friendId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': '{{ csrf_token }}' // Hvis du bruger CSRF-beskyttelse
                 }
             })
             .then(response => response.json())
             .then(data => {
+                console.log('Respons fra serveren:', data); // Debug serverrespons
                 if (data.status === 'success') {
-                    // Opdater knappen for at indikere, at anmodningen er annulleret
+                    console.log('Venneanmodning annulleret. Opdaterer knappen...');
                     button.textContent = 'Send anmodning';
                     button.classList.remove('btn-warning');
                     button.classList.add('btn-primary');
                     button.setAttribute('onclick', `addFriend(${friendId}, this)`);
+                } else {
+                    alert('Der opstod en fejl: ' + data.message);
                 }
                 button.disabled = false;
             })
             .catch(error => {
-                console.error('Netværksfejl:', error);
+                console.error('Netværksfejl:', error); // Debug netværksfejl
                 button.disabled = false;
             });
         }
         
-        function removeFriend(friendId, button) {
-            fetch(`/remove_friend/${friendId}`, {
+        function removeFriend(friendshipId, button) {
+            console.log(`Fjerner venskab med ID: ${friendshipId}`); // Debug
+            button.disabled = true;
+        
+            fetch(`/remove_friend/${friendshipId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -106,11 +113,17 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    button.closest('li').remove(); // Fjern vennen fra listen
+                    button.closest('li').remove();
+                } else {
+                    alert(data.message);
                 }
             })
             .catch(error => {
                 console.error('Netværksfejl:', error);
+                alert('Der opstod en fejl under fjernelsen af vennen.');
+            })
+            .finally(() => {
+                button.disabled = false;
             });
         }
         
@@ -269,7 +282,7 @@
                     {% endif %}
                     - Venner siden: {{ friend.created_at }}
                 </span>
-                <button class="btn btn-danger btn-sm" onclick="removeFriend({{ friend.id }}, this)">Fjern</button>
+                <button class="btn btn-danger btn-sm" onclick="removeFriend({{ friend.friendship_id }}, this)">Fjern</button>
             </li>
             {% endfor %}
         </ul>

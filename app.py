@@ -152,7 +152,6 @@ def send_friend_request(friend_id):
     if not friend:
         return {'status': 'warning', 'message': 'Brugeren blev ikke fundet.'}, 404
 
-    # Tjek om der allerede er en venneanmodning eller et venskab
     existing_request = Friendship.query.filter_by(user_id=user.id, friend_id=friend.id).first()
     if existing_request:
         if existing_request.status == 'pending':
@@ -160,12 +159,11 @@ def send_friend_request(friend_id):
         elif existing_request.status == 'accepted':
             return {'status': 'info', 'message': 'I er allerede venner.'}, 200
 
-    # Opret venneanmodning
     try:
         friendship = Friendship(user_id=user.id, friend_id=friend.id, status='pending')
         db.session.add(friendship)
         db.session.commit()
-        return {'status': 'success', 'message': 'Venneanmodning sendt.'}, 201
+        return {'status': 'success', 'new_status': 'pending_sent'}, 201
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Fejl under oprettelse af venneanmodning: {e}")
@@ -173,24 +171,25 @@ def send_friend_request(friend_id):
     
 @app.route('/accept_friend_request/<int:friendship_id>', methods=['POST'])
 def accept_friend_request(friendship_id):
+    app.logger.info(f"Forsøger at acceptere venneanmodning med ID: {friendship_id}")
+
     if 'user_id' not in session:
         return {'status': 'danger', 'message': 'Du skal være logget ind for at acceptere en venneanmodning.'}, 401
 
-    # Hent venneanmodningen
     friendship = Friendship.query.get(friendship_id)
     if not friendship:
+        app.logger.warning(f"Venneanmodning med ID {friendship_id} blev ikke fundet.")
         return {'status': 'danger', 'message': 'Venneanmodningen blev ikke fundet.'}, 404
 
-    # Tjek om den aktuelle bruger er modtageren af venneanmodningen
     if friendship.friend_id != session['user_id']:
+        app.logger.warning(f"Bruger har ikke tilladelse til at acceptere venneanmodning med ID {friendship_id}.")
         return {'status': 'danger', 'message': 'Du har ikke tilladelse til at acceptere denne venneanmodning.'}, 403
 
     try:
-        # Opdater status til 'accepted'
         friendship.status = 'accepted'
-        friendship.created_at = datetime.utcnow()  # Opdater tidspunktet for accept
         db.session.commit()
-        return {'status': 'success', 'message': 'Venneanmodning accepteret.'}, 200
+        app.logger.info(f"Venneanmodning med ID {friendship_id} blev accepteret.")
+        return {'status': 'success', 'new_status': 'remove_friend', 'message': 'Venneanmodning accepteret.'}, 200
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Fejl under accept af venneanmodning: {e}")
@@ -198,17 +197,25 @@ def accept_friend_request(friendship_id):
     
 @app.route('/reject_friend_request/<int:friendship_id>', methods=['POST'])
 def reject_friend_request(friendship_id):
+    app.logger.info(f"Forsøger at afvise venneanmodning med ID: {friendship_id}")
+
     if 'user_id' not in session:
         return {'status': 'danger', 'message': 'Du skal være logget ind for at afvise en venneanmodning.'}, 401
 
     friendship = Friendship.query.get(friendship_id)
-    if not friendship or friendship.friend_id != session['user_id']:
+    if not friendship:
+        app.logger.warning(f"Venneanmodning med ID {friendship_id} blev ikke fundet.")
         return {'status': 'danger', 'message': 'Venneanmodningen blev ikke fundet.'}, 404
+
+    if friendship.friend_id != session['user_id']:
+        app.logger.warning(f"Bruger har ikke tilladelse til at afvise venneanmodning med ID {friendship_id}.")
+        return {'status': 'danger', 'message': 'Du har ikke tilladelse til at afvise denne venneanmodning.'}, 403
 
     try:
         db.session.delete(friendship)
         db.session.commit()
-        return {'status': 'success'}, 200
+        app.logger.info(f"Venneanmodning med ID {friendship_id} blev afvist.")
+        return {'status': 'success', 'new_status': 'none', 'message': 'Venneanmodning afvist.'}, 200
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Fejl under afvisning af venneanmodning: {e}")
@@ -223,20 +230,14 @@ def cancel_friend_request(friend_id):
     if not user:
         return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
 
-    # Find venneanmodningen
     friendship = Friendship.query.filter_by(user_id=user.id, friend_id=friend_id, status='pending').first()
     if not friendship:
-        app.logger.warning(f"Bruger {user.id} forsøgte at annullere en ikke-eksisterende venneanmodning til {friend_id}")
         return {'status': 'warning', 'message': 'Ingen venneanmodning blev fundet.'}, 404
 
     try:
-        app.logger.info(f"Bruger {user.id} annullerer venneanmodning til {friend_id}")
         db.session.delete(friendship)
         db.session.commit()
-        return {
-            'status': 'success',
-            'message': f'Venneanmodning til {friendship.friend.username} blev annulleret.'
-        }, 200
+        return {'status': 'success', 'new_status': 'none'}, 200
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Fejl under annullering af venneanmodning: {e}")
@@ -516,7 +517,8 @@ def friends():
             'profile_picture': friend.profile_picture or 'static/icon-5355896_640.png',
             'total_beers': total_beers,
             'last_beer_time': last_beer_time,
-            'created_at': friendship.created_at.strftime('%d-%m-%Y')
+            'created_at': friendship.created_at.strftime('%d-%m-%Y'),
+            'friendship_id': friendship.id  # Tilføj friendship_id
         })
 
     # Fetch friend requests
@@ -628,28 +630,42 @@ def add_friend(friend_id):
         app.logger.error(f"Fejl under tilføjelse af ven: {e}")
         return {'status': 'danger', 'message': 'Der opstod en fejl under tilføjelsen af vennen.'}, 500
 
-@app.route('/remove_friend/<int:friend_id>', methods=['POST'])
-def remove_friend(friend_id):
+@app.route('/remove_friend/<int:friendship_id>', methods=['POST'])
+def remove_friend(friendship_id):
+    app.logger.info(f"Anmodning om at fjerne ven med ID: {friendship_id}")
+
     if 'user_id' not in session:
-        return {'status': 'danger', 'message': 'Du skal være logget ind for at fjerne venner.'}, 401
+        app.logger.warning("Bruger ikke logget ind.")
+        return {'status': 'danger', 'message': 'Du skal være logget ind for at fjerne en ven.'}, 401
 
-    user = db.session.get(User, session['user_id'])
-    if not user:
-        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
+    user_id = session['user_id']
+    app.logger.info(f"Bruger ID: {user_id}")
 
-    # Tjek om venskabet eksisterer
-    friendship = Friendship.query.filter_by(user_id=user.id, friend_id=friend_id).first()
+    # Tjek om venskabet findes
+    friendship = Friendship.query.get(friendship_id)
+
     if not friendship:
-        return {'status': 'warning', 'message': 'Venskabet eksisterer ikke.'}, 404
+        app.logger.warning(f"Venskabet med ID {friendship_id} blev ikke fundet.")
+        return {'status': 'warning', 'message': 'Venskabet findes ikke.'}, 404
 
-    # Fjern venskabet
+    # Tjek om brugeren har tilladelse til at fjerne venskabet
+    if friendship.user_id != user_id and friendship.friend_id != user_id:
+        app.logger.warning(f"Bruger {user_id} har ikke tilladelse til at fjerne venskabet med ID {friendship_id}.")
+        return {'status': 'danger', 'message': 'Du har ikke tilladelse til at fjerne dette venskab.'}, 403
+
     try:
+        # Log hvem der fjernes som ven
+        friend_user_id = friendship.friend_id if friendship.user_id == user_id else friendship.user_id
+        friend_user = db.session.get(User, friend_user_id)
+        friend_username = friend_user.username if friend_user else "Ukendt bruger"
+
         db.session.delete(friendship)
         db.session.commit()
-        return {'status': 'success', 'message': 'Vennen blev fjernet.'}, 200
+        app.logger.info(f"Venskabet med ID {friendship_id} mellem bruger {user_id} og {friend_user_id} blev fjernet.")
+        return {'status': 'success', 'message': f'Vennen "{friend_username}" blev fjernet.'}, 200
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Fejl under fjernelse af ven: {e}")
+        app.logger.error(f"Fejl under fjernelse af ven med ID {friendship_id}: {e}")
         return {'status': 'danger', 'message': 'Der opstod en fejl under fjernelsen af vennen.'}, 500
 
 @app.route('/delete_beer', methods=['POST'])
@@ -732,71 +748,73 @@ def settings():
 
 @app.route('/leaderboard')
 def leaderboard():
-    if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
-        if not user:
-            flash('Du skal være logget ind for at se leaderboardet.', 'danger')
-            return redirect(url_for('login'))
-
-        users = User.query.all()
-    
-        def get_leaderboard_data(time_delta=None):
-            leaderboard_data = []
-            for user in users:
-                query = BeerLog.query.filter_by(user_id=user.id)
-                if time_delta:
-                    query = query.filter(BeerLog.timestamp >= datetime.utcnow() - time_delta)
-                total_beers = query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
-
-                # Find status for venneanmodning
-                friendship = Friendship.query.filter(
-                    ((Friendship.user_id == session['user_id']) & (Friendship.friend_id == user.id)) |
-                    ((Friendship.user_id == user.id) & (Friendship.friend_id == session['user_id']))
-                ).first()
-
-                if friendship:
-                    if friendship.status == 'pending' and friendship.user_id == session['user_id']:
-                        status = 'pending_sent'
-                    elif friendship.status == 'pending' and friendship.friend_id == session['user_id']:
-                        status = 'pending_received'
-                    elif friendship.status == 'accepted':
-                        status = 'accepted'
-                    else:
-                        status = 'none'
-                else:
-                    status = 'none'
-
-                leaderboard_data.append({
-                    'id': user.id,
-                    'username': user.username,
-                    'profile_picture': user.profile_picture or User.default_profile_picture,
-                    'total_beers': total_beers,
-                    'status': status  # Tilføj status
-                })
-            leaderboard_data.sort(key=lambda x: x['total_beers'], reverse=True)
-            return leaderboard_data[:10]
-
-        # Calculate the total number of users
-        total_users = User.query.count()
-
-        # Prepare leaderboard sections dynamically
-        leaderboard_sections = [
-            ("Inden for de sidste 24 timer", get_leaderboard_data(timedelta(days=1))),
-            ("Inden for den sidste uge", get_leaderboard_data(timedelta(weeks=1))),
-            ("Inden for den sidste måned", get_leaderboard_data(timedelta(days=30))),
-            ("Inden for det sidste år", get_leaderboard_data(timedelta(days=365))),
-            ("Flest øl drukket nogensinde", get_leaderboard_data())
-        ]
-
-        return render_template(
-            'leaderboard.html',
-            user=user,  # Send the current user to the template
-            total_users=total_users,
-            leaderboard_sections=leaderboard_sections
-        )
-    else:
+    if 'user_id' not in session:
         flash('Du skal være logget ind for at se leaderboardet.', 'danger')
         return redirect(url_for('login'))
+
+    user_id = session['user_id']  # Hent den aktuelle brugers ID fra sessionen
+    user = db.session.get(User, user_id)
+    if not user:
+        flash('Bruger ikke fundet.', 'danger')
+        return redirect(url_for('login'))
+
+    users = User.query.all()
+
+    def get_leaderboard_data(time_delta=None):
+        leaderboard_data = []
+        for u in users:
+            query = BeerLog.query.filter_by(user_id=u.id)
+            if time_delta:
+                query = query.filter(BeerLog.timestamp >= datetime.utcnow() - time_delta)
+            total_beers = query.with_entities(db.func.sum(BeerLog.count)).scalar() or 0
+
+            # Find status for venneanmodning
+            friendship = Friendship.query.filter(
+                ((Friendship.user_id == user.id) & (Friendship.friend_id == u.id)) |
+                ((Friendship.user_id == u.id) & (Friendship.friend_id == user.id))
+            ).first()
+
+            if friendship:
+                if friendship.status == 'pending' and friendship.user_id == user.id:
+                    status = 'pending_sent'
+                elif friendship.status == 'pending' and friendship.friend_id == user.id:
+                    status = 'pending_received'
+                elif friendship.status == 'accepted':
+                    status = 'accepted'  # Status for eksisterende venner
+                else:
+                    status = 'none'
+            else:
+                status = 'none'
+
+            leaderboard_data.append({
+                'id': u.id,
+                'username': u.username,
+                'profile_picture': u.profile_picture or User.default_profile_picture,
+                'total_beers': total_beers,
+                'status': status,
+                'friendship_id': friendship.id if friendship else None  # Sørg for at sende friendship_id
+            })
+
+        app.logger.info(f"Leaderboard data: {leaderboard_data}")
+        leaderboard_data.sort(key=lambda x: x['total_beers'], reverse=True)
+        return leaderboard_data[:10]
+
+    total_users = User.query.count()
+
+    leaderboard_sections = [
+        ("Inden for de sidste 24 timer", get_leaderboard_data(timedelta(days=1))),
+        ("Inden for den sidste uge", get_leaderboard_data(timedelta(weeks=1))),
+        ("Inden for den sidste måned", get_leaderboard_data(timedelta(days=30))),
+        ("Inden for det sidste år", get_leaderboard_data(timedelta(days=365))),
+        ("Flest øl drukket nogensinde", get_leaderboard_data())
+    ]
+
+    return render_template(
+        'leaderboard.html',
+        user=user,
+        total_users=total_users,
+        leaderboard_sections=leaderboard_sections
+    )
     
 @app.route('/change_username', methods=['POST'])
 def change_username():
