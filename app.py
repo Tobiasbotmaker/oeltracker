@@ -34,6 +34,10 @@ app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+# Sørg for, at upload-mappen eksisterer
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+
 class BeerLog(db.Model):
     __tablename__ = 'beer_logs'
     id = db.Column(db.Integer, primary_key=True)
