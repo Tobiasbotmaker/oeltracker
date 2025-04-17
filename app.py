@@ -101,10 +101,12 @@ def upload_profile_picture():
     if 'user_id' in session:
         user = db.session.get(User, session['user_id'])
         if 'profile_picture' not in request.files:
+            app.logger.error("Ingen fil valgt.")
             return {'status': 'error', 'message': 'Ingen fil valgt.'}, 400
         
         file = request.files['profile_picture']
         if file.filename == '':
+            app.logger.error("Ingen fil valgt.")
             return {'status': 'error', 'message': 'Ingen fil valgt.'}, 400
         
         if file and allowed_file(file.filename):
@@ -112,28 +114,36 @@ def upload_profile_picture():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             
             try:
+                app.logger.info(f"Gemmer fil midlertidigt: {filepath}")
+                
                 # Delete the old profile picture if it exists and is not the default
                 if user.profile_picture and user.profile_picture != User.default_profile_picture:
                     old_filepath = os.path.join(os.getcwd(), user.profile_picture)
                     if os.path.exists(old_filepath):
+                        app.logger.info(f"Sletter gammelt profilbillede: {old_filepath}")
                         os.remove(old_filepath)
                 
                 # Save the new file temporarily
                 file.save(filepath)
+                app.logger.info(f"Fil gemt: {filepath}")
                 
                 # Resize and compress the image to a maximum of 100 KB
                 compress_image(filepath, max_size_kb=100)
+                app.logger.info(f"Fil komprimeret: {filepath}")
                 
                 # Update the user's profile picture in the database
                 user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Save relative path
                 db.session.commit()
+                app.logger.info(f"Profilbillede opdateret i databasen: {user.profile_picture}")
                 
                 return {'status': 'success', 'image_url': url_for('static', filename=user.profile_picture)}, 200
             except Exception as e:
                 app.logger.error(f"Fejl under upload af profilbillede: {e}")
                 return {'status': 'error', 'message': 'Der opstod en fejl under upload af billedet.'}, 500
         
+        app.logger.error("Formatet på billedet understøttes ikke.")
         return {'status': 'error', 'message': 'Formatet på billedet understøttes ikke. Kun png, jpg og jpeg understøttes'}, 400
+    app.logger.error("Bruger ikke logget ind.")
     return {'status': 'error', 'message': 'Du skal være logget ind for at uploade et billede.'}, 401
 
 @app.route('/send_friend_request/<int:friend_id>', methods=['POST'])
