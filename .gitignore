@@ -1,0 +1,22 @@
+# Ignorer miljøvariabler
+.env
+
+# Ignorer cache-filer
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignorer logfiler
+*.log
+
+# Ignorer virtuelle miljøer
+venv/
+.env/
+
+# Ignorer databasefiler (hvis du bruger SQLite til udvikling)
+*.sqlite3
+
+# Ignorer IDE-specifikke filer
+.vscode/
+.idea/
+*.swp
