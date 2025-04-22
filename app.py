@@ -136,7 +136,7 @@ def upload_profile_picture():
                 app.logger.info(f"Fil komprimeret: {filepath}")
                 
                 # Update the user's profile picture in the database
-                user.profile_picture = os.path.relpath(filepath, os.getcwd())  # Save relative path
+                user.profile_picture = os.path.join(app.config['UPLOAD_FOLDER'], filename)  # Save relative path
                 db.session.commit()
                 app.logger.info(f"Profilbillede opdateret i databasen: {user.profile_picture}")
                 
