@@ -1,177 +1,39 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Øl tracker</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        .logout-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-        }
-    </style>
-    <script>
-        function confirmDelete() {
-            var result = confirm("Er du sikker på, at du vil slette din seneste øl?");
-            if (result) {
-                document.getElementById("deleteBeerForm").submit();
-            }
-        }
+<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/index.html -->
+{% extends "base.html" %}
 
-        setTimeout(function() {
-            var flashContainer = document.querySelector('.flash-container');
-            if (flashContainer) {
-                flashContainer.style.display = 'none';
-            }
-        }, 3000); // 3000 ms = 3 sekunder
+{% block title %}Forside{% endblock %}
 
-        function addBeer() {
-            var audio = new Audio('/static/click-sound.mp3');
-            audio.play();
-
-            var locationAccess = localStorage.getItem('locationPermission');
-            if (locationAccess === 'granted') {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        var form = document.getElementById('addBeerForm');
-                        var latitudeInput = document.createElement('input');
-                        latitudeInput.type = 'hidden';
-                        latitudeInput.name = 'latitude';
-                        latitudeInput.value = position.coords.latitude;
-                        form.appendChild(latitudeInput);
-
-                        var longitudeInput = document.createElement('input');
-                        longitudeInput.type = 'hidden';
-                        longitudeInput.name = 'longitude';
-                        longitudeInput.value = position.coords.longitude;
-                        form.appendChild(longitudeInput);
-
-                        form.submit();
-                    }, function(error) {
-                        alert("Din lokalitet er ikke tilgængelig i øjeblikket");
-                        document.getElementById('addBeerForm').submit();
-                    });
-                } else {
-                    alert("Geolocation is not supported by this browser.");
-                    document.getElementById('addBeerForm').submit();
-                }
-            } else {
-                document.getElementById('addBeerForm').submit();
-            }
-        }
-
-        function requestLocationPermission() {
-            var result = confirm("Vil du give tilladelse til at bruge din lokalitet for at vise, hvor du drak øllene? Du kan altid ændre dette senere på indstillingssiden.");
-            if (result) {
-                // Gem tilladelsen med det samme
-                localStorage.setItem('locationPermission', 'granted');
-        
-                // Prøv at hente lokationen, men ændr ikke indstillingen ved fejl
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        function (position) {
-                        },
-                        function (error) {
-                            // Lokationen kan ikke findes, men tilladelsen er stadig givet
-                            alert("Din lokalitet er ikke tilgængelig i øjeblikket, men tilladelsen er givet. Tjek din browsers indstillinger for at se om lokaliteten er slået fra");
-                        }
-                    );
-                } else {
-                    alert("Geolocation understøttes ikke af denne browser, men tilladelsen er givet.");
-                }
-            } else {
-                // Hvis brugeren nægter tilladelse
-                localStorage.setItem('locationPermission', 'denied');
-            }
-        }
-
-        window.onload = function () {
-            var locationPermission = localStorage.getItem('locationPermission');
-            var isNewUser = {{ is_new_user|tojson }}; // Variabel fra backend
-        
-            console.log("isNewUser:", isNewUser); // Debugging
-            console.log("locationPermission:", locationPermission); // Debugging
-        
-            // Spørg kun om lokationstilladelse, hvis brugeren er ny
-            if (isNewUser) {
-                requestLocationPermission();
-            }
-        
-            var theme = localStorage.getItem('theme');
-            if (!theme) {
-                theme = 'classic';
-                localStorage.setItem('theme', theme);
-            }
-            document.body.className = theme + '-theme';
-        };
-    </script>
-</head>
-<body class="container d-flex flex-column">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="flash-container">
-        <div class="flash-message">
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }}" role="alert">
-              {{ message }}
-            </div>
-          {% endfor %}
-        </div>
-      </div>
+{% block content %}
+<div class="beer-background">
+    <br>
+    <h1 class="mt-5 beer-title">Velkommen, {{ username }}</h1>
+    <p class="beer-text">Antal øl du har drukket: {{ total_beers }}</p>
+    {% if last_beer_time %}
+        <p class="beer-text">Sidste øl du har drukket: {{ last_beer_time }}</p>
+    {% else %}
+        <p class="beer-text">Ingen øl drukket endnu</p>
     {% endif %}
-  {% endwith %}
-    <nav class="navbar fixed-top d-flex justify-content-between">
-        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
-        <div class="d-flex align-items-center">
-            <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                    <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
-                    <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
-                    <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
-                    <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-                    <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
-                    <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
-                </div>
-            </div>
-            <a href="{{ url_for('profile') }}">
-                <img 
-                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                    alt="Profilbillede" 
-                    class="profile-picture"
-                    id="profilePicture"
-                >
-            </a>
-        </div>
-    </nav>
-    <div class="flex-grow-1 beer-background">
-        <br>
-        <h1 class="mt-5 beer-title">Velkommen, {{ username }}</h1>
-        <p class="beer-text">Antal øl du har drukket: {{ total_beers }}</p>
-        {% if last_beer_time %}
-            <p class="beer-text">Sidste øl du har drukket: {{ last_beer_time }}</p>
-        {% else %}
-            <p class="beer-text">Ingen øl drukket endnu</p>
-        {% endif %}
-        <p class="beer-text">Du og dine venner har i alt drukket {{ total_user_and_friends_beers }} øl</p>
-        <p class="beer-text">Antal øl drukket af alle brugere i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
-        <form id="addBeerForm" action="{{ url_for('add_beer') }}" method="post" class="mb-3">
-            <button type="button" class="btn btn-success" onclick="addBeer()">Registrer øl</button>
-        </form>
-        <form id="deleteBeerForm" action="{{ url_for('delete_beer') }}" method="post" class="d-inline">
-            <button type="button" class="btn btn-danger" onclick="confirmDelete()">Slet øl</button>
-        </form>
-        {% if is_admin %}
-            <a href="{{ url_for('admin') }}" class="btn btn-secondary mt-3">Admin side</a>
-        {% endif %}
-    </div>
-    <a href="{{ url_for('logout') }}" class="btn btn-secondary logout-button">Log ud</a>
-</body>
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</html>
+    <p class="beer-text">Du og dine venner har i alt drukket {{ total_user_and_friends_beers }} øl</p>
+    <p class="beer-text">Antal øl drukket af alle brugere i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
+    <form id="addBeerForm" action="{{ url_for('add_beer') }}" method="post" class="mb-3">
+        <button type="button" class="btn btn-success" onclick="addBeer()">Registrer øl</button>
+    </form>
+    <form id="deleteBeerForm" action="{{ url_for('delete_beer') }}" method="post" class="d-inline">
+        <button type="button" class="btn btn-danger" onclick="confirmDelete()">Slet øl</button>
+    </form>
+    {% if is_admin %}
+        <a href="{{ url_for('admin') }}" class="btn btn-secondary mt-3">Admin side</a>
+    {% endif %}
+</div>
+<script>
+    function addBeer() {
+        document.getElementById('addBeerForm').submit();
+    }
+
+    function confirmDelete() {
+        if (confirm("Er du sikker på, at du vil slette en øl?")) {
+            document.getElementById('deleteBeerForm').submit();
+        }
+    }
+</script>
+{% endblock %}

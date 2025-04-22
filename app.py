@@ -7,6 +7,10 @@ from flask_migrate import Migrate
 import os
 import logging
 from PIL import Image
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 def compress_image(filepath, max_size_kb=100):
@@ -26,11 +30,14 @@ def compress_image(filepath, max_size_kb=100):
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__, static_folder='static')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://beer_game_db_user:hMVeKc07Z2hLBMs28p9cllxyglWMNqxy@dpg-cvslpd7diees73fj3mkg-a.frankfurt-postgres.render.com/beer_game_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///default.db')  # Brug miljøvariabel
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Slå ændringssporing fra (for performance)
-app.config['SECRET_KEY'] = 'CIpFfzd/lCsLNdeBtZ9sxGkS8gkkFz3w'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback_secret_key')  # Brug miljøvariabel
 app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pictures'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
+app.config['SESSION_COOKIE_SECURE'] = True  # Kun tillad cookies over HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Forhindre JavaScript-adgang til cookies
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Beskyt mod CSRF-angreb
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -68,10 +75,23 @@ class Friendship(db.Model):
     user = db.relationship('User', foreign_keys=[user_id], backref='friendships')
     friend = db.relationship('User', foreign_keys=[friend_id], backref='friends')
 
+csrf = CSRFProtect(app)
+
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'secure_admin_password')
+
 @app.after_request
 def add_header(response):
     response.headers['Cache-Control'] = 'public, max-age=31536000'
     return response
+
+@app.route('/cookie_policy')
+def cookie_policy():
+    return render_template('cookie_policy.html')
+
+@app.route('/privacy_policy')
+def privacy_policy():
+    return render_template('privacy_policy.html')
 
 @app.route('/')
 def index():
@@ -269,7 +289,7 @@ def admin_login():
         admin_password = request.form['password']
 
         # Hardkodede admin-oplysninger (kan flyttes til miljøvariabler for sikkerhed)
-        if admin_username == 'admin' and admin_password == 'secure_admin_password':
+        if admin_username == ADMIN_USERNAME and admin_password == ADMIN_PASSWORD:
             session['is_admin'] = True  # Sæt admin-session
             return redirect(url_for('admin'))
         else:
@@ -301,7 +321,24 @@ def register():
     
     return render_template('register.html')
 
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        message = request.form.get('message')
+
+        # Her kan du tilføje logik til at sende e-mail eller gemme beskeden
+        # Eksempel: Send beskeden til en administrator via e-mail
+        print(f"Ny besked fra {name} ({email}): {message}")
+
+        flash('Tak for din besked! Vi vender tilbage hurtigst muligt.', 'success')
+        return redirect(url_for('contact'))
+
+    return render_template('contact.html')
+
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")  # Maks. 5 loginforsøg pr. minut
 def login():
     if request.method == 'POST':
         username = request.form['username']

@@ -1,0 +1,70 @@
+<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/privacy_policy.html -->
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privatlivspolitik</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="container mt-5">
+    <h1>Privatlivspolitik</h1>
+    <p>Vi tager dit privatliv alvorligt. Denne politik forklarer, hvordan vi indsamler, bruger og beskytter dine data, når du bruger vores applikation.</p>
+
+    <h2>1. Hvilke data indsamler vi?</h2>
+    <p>Vi kan indsamle følgende oplysninger:</p>
+    <ul>
+        <li>Dit brugernavn og adgangskode (til login).</li>
+        <li>Din lokation (hvis du giver tilladelse).</li>
+        <li>Profilbilleder, som du uploader.</li>
+        <li>Data om dine aktiviteter i applikationen (f.eks. antal øl drukket).</li>
+    </ul>
+
+    <h2>2. Hvordan bruger vi dine data?</h2>
+    <p>Vi bruger dine data til følgende formål:</p>
+    <ul>
+        <li>At give dig adgang til applikationen og dens funktioner.</li>
+        <li>At vise dit brugernavn og profilbillede på leaderboards.</li>
+        <li>At forbedre brugeroplevelsen (f.eks. gemme temaindstillinger).</li>
+        <li>At analysere brugen af applikationen for at forbedre vores tjenester.</li>
+    </ul>
+
+    <h2>3. Hvordan beskytter vi dine data?</h2>
+    <p>Vi tager sikkerheden af dine data alvorligt og bruger følgende foranstaltninger:</p>
+    <ul>
+        <li>Kryptering af adgangskoder.</li>
+        <li>Brug af sikre forbindelser (HTTPS).</li>
+        <li>Regelmæssig opdatering af vores systemer for at forhindre sikkerhedsbrud.</li>
+        <li>Begrænset adgang til data for kun autoriserede personer.</li>
+    </ul>
+
+    <h2>4. Deling af data</h2>
+    <p>Vi deler ikke dine data med tredjeparter, medmindre det er nødvendigt for at levere vores tjenester (f.eks. hosting af databasen). Vi sælger aldrig dine data til tredjeparter.</p>
+
+    <h2>5. Hvor længe opbevarer vi dine data?</h2>
+    <p>Vi opbevarer dine data, så længe din konto er aktiv. Hvis du sletter din konto, slettes alt data tilknyttet kontoen, inklusive profilbilleder og aktivitetsdata.</p>
+
+    <h2>6. Dine rettigheder</h2>
+    <p>Du har følgende rettigheder:</p>
+    <ul>
+        <li>At få adgang til de data, vi har om dig.</li>
+        <li>At rette eller opdatere dine data.</li>
+        <li>At anmode om sletning af dine data.</li>
+    </ul>
+    <p>Kontakt os via vores <a href="{{ url_for('contact') }}">kontaktformular</a>, hvis du ønsker at udøve dine rettigheder.</p>
+
+    <h2>7. Ændringer i denne politik</h2>
+    <p>Vi kan opdatere denne privatlivspolitik fra tid til anden. Eventuelle ændringer vil blive offentliggjort på denne side, og vi anbefaler, at du regelmæssigt gennemgår politikken.</p>
+
+    <h2>8. Kontakt os</h2>
+    <p>Hvis du har spørgsmål om denne privatlivspolitik, kan du kontakte os via vores <a href="{{ url_for('contact') }}">kontaktformular</a>.</p>
+
+    <div class="text-left mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Tilbage til forsiden</a>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

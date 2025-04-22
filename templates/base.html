@@ -1,0 +1,142 @@
+<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/base.html -->
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Øl tracker{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+    <style>
+        .logout-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+        }
+
+        .logout-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px; /* Afstand mellem knapperne */
+        }
+
+        .policy-links {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 0.9rem;
+        }
+
+        .policy-links a {
+            color: #ffc107;
+            text-decoration: none;
+            margin-right: 10px;
+        }
+
+        .policy-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!localStorage.getItem('cookiesAccepted')) {
+                document.getElementById('cookie-banner').style.display = 'block';
+            }
+
+            document.getElementById('accept-cookies').addEventListener('click', function () {
+                localStorage.setItem('cookiesAccepted', 'true');
+                document.getElementById('cookie-banner').style.display = 'none';
+            });
+        });
+
+        window.onload = function () {
+            var theme = localStorage.getItem('theme');
+            if (!theme) {
+                theme = 'classic';
+                localStorage.setItem('theme', theme);
+            }
+            document.body.className = theme + '-theme';
+        };
+    </script>
+</head>
+<body class="container d-flex flex-column">
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        <div class="flash-message">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" role="alert">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Navbar -->
+    <nav class="navbar fixed-top d-flex justify-content-between">
+        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
+        <div class="d-flex align-items-center">
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
+                    <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
+                    <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
+                    <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
+                    <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
+                    <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
+                    <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
+                </div>
+            </div>
+            <a href="{{ url_for('profile') }}">
+                <img 
+                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                    alt="Profilbillede" 
+                    class="profile-picture"
+                    id="profilePicture"
+                >
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="flex-grow-1">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <!-- Logout and additional buttons -->
+    <div class="logout-container">
+        {% block extra_buttons %}
+        {% endblock %}
+        <a href="{{ url_for('logout') }}" class="btn btn-secondary">Log ud</a>
+    </div>
+
+    <!-- Cookie banner -->
+    <div id="cookie-banner" style="display: none; position: fixed; bottom: 0; width: 100%; background: #343a40; color: white; padding: 10px; text-align: center; z-index: 1000;">
+        <span>Vi bruger cookies til at holde dig logget ind og gemme dine præferencer. Læs vores <a href="{{ url_for('cookie_policy') }}" style="color: #ffc107;">cookiepolitik</a>.</span>
+        <button id="accept-cookies" class="btn btn-success btn-sm ml-3">Accepter</button>
+    </div>
+
+    <!-- Footer links -->
+    <div class="policy-links">
+        <a href="{{ url_for('cookie_policy') }}">Cookiepolitik</a>
+        <a href="{{ url_for('privacy_policy') }}">Privatlivspolitik</a>
+    </div>
+
+    <a href="{{ url_for('logout') }}" class="btn btn-secondary logout-button">Log ud</a>
+
+    <!-- Scripts -->
+    {% block scripts %}
+    {% endblock %}
+</body>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</html>

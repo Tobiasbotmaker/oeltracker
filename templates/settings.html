@@ -1,128 +1,102 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Indstillinger</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>
-        window.onload = function() {
-            // Tjek og anvend tema
-            var theme = localStorage.getItem('theme');
-            if (!theme) {
-                theme = 'classic'; // Standard tema
-                localStorage.setItem('theme', theme);
-            }
-            document.body.className = theme + '-theme';
-        
-            var themeSelect = document.getElementById('themeSelect');
-            if (themeSelect) {
-                themeSelect.value = theme;
-            }
-        
-            // Håndter lokationsadgang
-            var locationAccess = localStorage.getItem('locationPermission');
-            if (locationAccess === 'granted') {
-                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
-                document.getElementById('locationStatus').innerText = 'Status: Tilladt';
-            } else if (locationAccess === 'denied') {
+<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/settings.html -->
+{% extends "base.html" %}
+
+{% block title %}Indstillinger{% endblock %}
+
+{% block content %}
+<h1 class="mt-5">Indstillinger</h1>
+
+<!-- Lokationsindstillinger -->
+<button id="locationToggle" class="btn btn-primary" onclick="toggleLocationAccess()">Enable Location Access</button>
+<span id="locationStatus">Status: Not allowed</span>
+<br><br>
+
+<!-- Temaindstillinger -->
+<label for="themeSelect">Vælg Tema:</label>
+<select id="themeSelect" class="form-control" onchange="changeTheme(this.value)">
+    <option value="classic">Classic</option>
+    <option value="grøn">Grøn</option>
+    <option value="roskilde">Roskilde</option>
+    <option value="nat">Nat</option>
+    <option value="dag">Dag</option>
+</select>
+<br><br>
+
+<a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.onload = function() {
+        // Tjek og anvend tema
+        var theme = localStorage.getItem('theme');
+        if (!theme) {
+            theme = 'classic'; // Standard tema
+            localStorage.setItem('theme', theme);
+        }
+        document.body.className = theme + '-theme';
+    
+        var themeSelect = document.getElementById('themeSelect');
+        if (themeSelect) {
+            themeSelect.value = theme;
+        }
+    
+        // Håndter lokationsadgang
+        var locationAccess = localStorage.getItem('locationPermission');
+        if (locationAccess === 'granted') {
+            document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
+            document.getElementById('locationStatus').innerText = 'Status: Tilladt';
+        } else if (locationAccess === 'denied') {
+            document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
+            document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
+        } else {
+            document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
+            document.getElementById('locationStatus').innerText = 'Status: Ikke valgt';
+        }
+    };
+
+    function changeTheme(theme) {
+        // Gem det valgte tema i localStorage
+        localStorage.setItem('theme', theme);
+        // Anvend temaet på body
+        document.body.className = theme + '-theme';
+    }
+
+    function toggleLocationAccess() {
+        var locationAccess = localStorage.getItem('locationPermission');
+        if (locationAccess === 'granted') {
+            // Brugeren vælger at slå lokationsadgang fra
+            var confirmResult = confirm("Er du sikker på, at du vil slå lokationsadgang fra?");
+            if (confirmResult) {
+                localStorage.setItem('locationPermission', 'denied');
                 document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
                 document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
-            } else {
-                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
-                document.getElementById('locationStatus').innerText = 'Status: Ikke valgt';
             }
-        };
-
-        function changeTheme(theme) {
-            // Gem det valgte tema i localStorage
-            localStorage.setItem('theme', theme);
-            // Anvend temaet på body
-            document.body.className = theme + '-theme';
-        }
-
-        function toggleLocationAccess() {
-            var locationAccess = localStorage.getItem('locationPermission');
-            if (locationAccess === 'granted') {
-                // Brugeren vælger at slå lokationsadgang fra
-                var confirmResult = confirm("Er du sikker på, at du vil slå lokationsadgang fra?");
-                if (confirmResult) {
-                    localStorage.setItem('locationPermission', 'denied');
-                    document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
-                    document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
-                }
-            } else {
-                // Brugeren vælger at slå lokationsadgang til
-                var confirmResult = confirm("Vil du give tilladelse til at bruge din lokalitet?");
-                if (confirmResult) {
-                    // Gem tilladelsen med det samme
-                    localStorage.setItem('locationPermission', 'granted');
-                    document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
-                    document.getElementById('locationStatus').innerText = 'Status: Tilladt';
-        
-                    // Prøv at hente lokationen, men ændr ikke indstillingen ved fejl
-                    if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                            function (position) {
-                                alert("Lokation fundet!");
-                            },
-                            function (error) {
-                                // Lokationen kan ikke findes, men tilladelsen er stadig givet
-                                alert("Din lokalitet er ikke tilgængelig i øjeblikket, men tilladelsen er givet.");
-                            }
-                        );
-                    } else {
-                        alert("Geolocation understøttes ikke af denne browser, men tilladelsen er givet.");
-                    }
+        } else {
+            // Brugeren vælger at slå lokationsadgang til
+            var confirmResult = confirm("Vil du give tilladelse til at bruge din lokalitet?");
+            if (confirmResult) {
+                // Gem tilladelsen med det samme
+                localStorage.setItem('locationPermission', 'granted');
+                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
+                document.getElementById('locationStatus').innerText = 'Status: Tilladt';
+    
+                // Prøv at hente lokationen, men ændr ikke indstillingen ved fejl
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function (position) {
+                            alert("Lokation fundet!");
+                        },
+                        function (error) {
+                            // Lokationen kan ikke findes, men tilladelsen er stadig givet
+                            alert("Din lokalitet er ikke tilgængelig i øjeblikket, men tilladelsen er givet.");
+                        }
+                    );
+                } else {
+                    alert("Geolocation understøttes ikke af denne browser, men tilladelsen er givet.");
                 }
             }
         }
-    </script>
-</head>
-<body class="container d-flex flex-column">
-    <nav class="navbar fixed-top d-flex justify-content-between">
-        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
-        <div class="d-flex align-items-center">
-            <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                    <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
-                    <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
-                    <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
-                    <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-                    <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
-                    <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
-                </div>
-            </div>
-            <a href="{{ url_for('profile') }}">
-                <img 
-                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                    alt="Profilbillede" 
-                    class="profile-picture"
-                    id="profilePicture"
-                >
-            </a>
-        </div>
-    </nav>
-    <br>
-    <h1 class="mt-5">Indstillinger</h1>
-    <button id="locationToggle" class="btn btn-primary" onclick="toggleLocationAccess()">Enable Location Access</button>
-    <span id="locationStatus">Status: Not allowed</span>
-    <br><br>
-    <label for="themeSelect">Vælg Tema:</label>
-    <select id="themeSelect" class="form-control" onchange="changeTheme(this.value)">
-        <option value="classic">Classic</option>
-        <option value="grøn">Grøn</option>
-        <option value="roskilde">Roskilde</option>
-        <option value="nat">Nat</option>
-        <option value="dag">Dag</option>
-    </select>
-    <br><br>
-    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
-</body>
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</html>
+    }
+</script>
+{% endblock %}

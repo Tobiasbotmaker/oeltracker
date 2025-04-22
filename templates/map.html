@@ -1,166 +1,135 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Kort</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        #map {
-            height: 500px;
-            width: 100%;
-            border: 1px solid black;
-        }
-        .navbar {
-            background-color: var(--theme-navbar-bg, #343a40); /* Dynamisk baggrundsfarve baseret på tema */
-        }
-        .navbar .navbar-brand, .navbar .nav-link {
-            color: var(--theme-navbar-text, #ffffff); /* Dynamisk tekstfarve baseret på tema */
-        }
-    </style>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
-        function initMap() {
-            console.log("Initializing map...");
-            var defaultLocation = [56.2639, 9.5018]; // Default location (Denmark)
-            var map = L.map('map').setView(defaultLocation, 6); // Adjust zoom level as needed
+<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/map.html -->
+{% extends "base.html" %}
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
+{% block title %}Kort{% endblock %}
 
-            var currentView = "user"; // Default view is user's logs
-            var markers = []; // Array to store markers
+{% block content %}
+<h1 class="mt-5">Kort</h1>
+<div id="map" class="mb-3"></div>
+<div class="d-flex align-items-center">
+    <span id="viewText" class="mr-3">Kortet viser kun mine pile</span>
+    <button id="toggleViewButton" class="btn btn-primary">Tryk for kun at vise venners pile</button>
+</div>
+<br>
+<a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
+{% endblock %}
 
-            var userLogs = {{ user_logs|tojson }};
-            var friendsLogs = {{ friends_logs|tojson }};
-            var allLogs = {{ all_logs|tojson }};
+{% block scripts %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-            function updateMap(logs) {
-                console.log("Opdaterer kortet med logs:", logs);
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    function initMap() {
+        console.log("Initializing map...");
+        var defaultLocation = [56.2639, 9.5018]; // Default location (Denmark)
+        var map = L.map('map').setView(defaultLocation, 6); // Adjust zoom level as needed
 
-                // Fjern eksisterende markører
-                markers.forEach(function(marker) {
-                    map.removeLayer(marker);
-                });
-                markers = [];
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
 
-                // Gruppér logs baseret på koordinater
-                var groupedLogs = {};
-                logs.forEach(function(log) {
-                    if (log.latitude && log.longitude) {
-                        var key = `${log.latitude},${log.longitude}`;
-                        if (!groupedLogs[key]) {
-                            groupedLogs[key] = {
-                                latitude: log.latitude,
-                                longitude: log.longitude,
-                                count: 0
-                            };
-                        }
-                        groupedLogs[key].count += log.count;
+        var currentView = "user"; // Default view is user's logs
+        var markers = []; // Array to store markers
+
+        var userLogs = {{ user_logs|tojson }};
+        var friendsLogs = {{ friends_logs|tojson }};
+        var allLogs = {{ all_logs|tojson }};
+
+        function updateMap(logs) {
+            console.log("Opdaterer kortet med logs:", logs);
+
+            // Fjern eksisterende markører
+            markers.forEach(function(marker) {
+                map.removeLayer(marker);
+            });
+            markers = [];
+
+            // Gruppér logs baseret på koordinater
+            var groupedLogs = {};
+            logs.forEach(function(log) {
+                if (log.latitude && log.longitude) {
+                    var key = `${log.latitude},${log.longitude}`;
+                    if (!groupedLogs[key]) {
+                        groupedLogs[key] = {
+                            latitude: log.latitude,
+                            longitude: log.longitude,
+                            count: 0
+                        };
                     }
-                });
-
-                // Opret markører for hvert sted
-                Object.values(groupedLogs).forEach(function(group) {
-                    var marker = L.marker([group.latitude, group.longitude])
-                        .addTo(map)
-                        .bindPopup("Antal øl drukket her: " + group.count);
-                    markers.push(marker);
-                });
-            }
-
-            // Opdater teksten for visningen
-            function updateViewText() {
-                var viewText = document.getElementById("viewText");
-                if (currentView === "user") {
-                    viewText.textContent = "Kortet viser kun mine pile";
-                } else if (currentView === "friends") {
-                    viewText.textContent = "Kortet viser kun venners pile";
-                } else if (currentView === "all") {
-                    viewText.textContent = "Kortet viser alles pile";
+                    groupedLogs[key].count += log.count;
                 }
-            }
+            });
 
-            // Start med at vise brugerens egne logs
-            updateMap(userLogs);
-            updateViewText();
-
-            // Håndter knapklik for at skifte visning
-            document.getElementById("toggleViewButton").addEventListener("click", function() {
-                if (currentView === "user") {
-                    currentView = "friends";
-                    updateMap(friendsLogs);
-                    this.textContent = "Tryk for at vise alles pile"; // Opdater tekst til næste visning
-                } else if (currentView === "friends") {
-                    currentView = "all";
-                    updateMap(allLogs);
-                    this.textContent = "Tryk for kun at vise mine pile"; // Opdater tekst til næste visning
-                } else {
-                    currentView = "user";
-                    updateMap(userLogs);
-                    this.textContent = "Tryk for kun at vise venners pile"; // Opdater tekst til næste visning
-                }
-                updateViewText(); // Opdater teksten for visningen
+            // Opret markører for hvert sted
+            Object.values(groupedLogs).forEach(function(group) {
+                var marker = L.marker([group.latitude, group.longitude])
+                    .addTo(map)
+                    .bindPopup("Antal øl drukket her: " + group.count);
+                markers.push(marker);
             });
         }
 
-        window.onload = function() {
-            var locationPermission = localStorage.getItem('locationPermission');
-            if (!locationPermission) {
-                requestLocationPermission();
+        // Opdater teksten for visningen
+        function updateViewText() {
+            var viewText = document.getElementById("viewText");
+            if (currentView === "user") {
+                viewText.textContent = "Kortet viser kun mine pile";
+            } else if (currentView === "friends") {
+                viewText.textContent = "Kortet viser kun venners pile";
+            } else if (currentView === "all") {
+                viewText.textContent = "Kortet viser alles pile";
             }
+        }
 
-            var theme = localStorage.getItem('theme');
-            if (!theme) {
-                theme = 'dag';
-                localStorage.setItem('theme', theme);
+        // Start med at vise brugerens egne logs
+        updateMap(userLogs);
+        updateViewText();
+
+        // Håndter knapklik for at skifte visning
+        document.getElementById("toggleViewButton").addEventListener("click", function() {
+            if (currentView === "user") {
+                currentView = "friends";
+                updateMap(friendsLogs);
+                this.textContent = "Tryk for at vise alles pile"; // Opdater tekst til næste visning
+            } else if (currentView === "friends") {
+                currentView = "all";
+                updateMap(allLogs);
+                this.textContent = "Tryk for kun at vise mine pile"; // Opdater tekst til næste visning
+            } else {
+                currentView = "user";
+                updateMap(userLogs);
+                this.textContent = "Tryk for kun at vise venners pile"; // Opdater tekst til næste visning
             }
-            document.body.className = theme + '-theme';
+            updateViewText(); // Opdater teksten for visningen
+        });
+    }
 
-            // Initialiser kortet
-            initMap();
-        };
-    </script>
-</head>
-<body class="container d-flex flex-column">
-    <nav class="navbar fixed-top d-flex justify-content-between">
-        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
-        <div class="d-flex align-items-center">
-            <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                    <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
-                    <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
-                    <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
-                    <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-                    <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
-                    <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
-                </div>
-            </div>
-            <a href="{{ url_for('profile') }}">
-                <img 
-                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                    alt="Profilbillede" 
-                    class="rounded-circle" 
-                    style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;">
-            </a>
-        </div>
-    </nav>
-    <br>
-    <h1 class="mt-5">Kort</h1>
-    <div id="map" class="mb-3"></div>
-    <div class="d-flex align-items-center">
-        <span id="viewText" class="mr-3">Kortet viser kun mine pile</span> <!-- Tilføjet 'mr-3' for margin -->
-        <button id="toggleViewButton" class="btn btn-primary">Tryk for kun at vise venners pile</button>
-    </div>
-    <br>
-    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
-</body>
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</html>
+    window.onload = function() {
+        var locationPermission = localStorage.getItem('locationPermission');
+        if (!locationPermission) {
+            requestLocationPermission();
+        }
+
+        var theme = localStorage.getItem('theme');
+        if (!theme) {
+            theme = 'dag';
+            localStorage.setItem('theme', theme);
+        }
+        document.body.className = theme + '-theme';
+
+        // Initialiser kortet
+        initMap();
+    };
+</script>
+
+<style>
+    #map {
+        height: 500px;
+        width: 100%;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}

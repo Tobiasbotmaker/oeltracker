@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontakt os</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="container mt-5">
+    <h1 class="mt-5">Kontakt os</h1>
+    <p>Har du spørgsmål, forslag eller oplever du problemer? Udfyld formularen nedenfor, så vender vi tilbage til dig hurtigst muligt.</p>
+
+    <form method="post" action="{{ url_for('contact') }}" class="mt-4">
+        <div class="form-group">
+            <label for="name">Navn</label>
+            <input type="text" id="name" name="name" class="form-control" placeholder="Dit navn" required>
+        </div>
+        <div class="form-group">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" class="form-control" placeholder="Din e-mailadresse" required>
+        </div>
+        <div class="form-group">
+            <label for="message">Besked</label>
+            <textarea id="message" name="message" class="form-control" rows="5" placeholder="Din besked" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Send besked</button>
+    </form>
+
+    <div class="text-left mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Tilbage til forsiden</a>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

@@ -1,186 +1,102 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Din Profil</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        #modalProfilePicture {
-            max-width: 100%;
-            max-height: 400px;
-            object-fit: cover;
-        }
+{% extends "base.html" %}
 
-        .logout-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px; /* Add spacing between the buttons */
-        }
+{% block title %}
+Din Profil
+{% endblock %}
 
-        /* Large Profile Picture in the Middle */
-        .profile-picture-large {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 50%;
-        }
-    </style>
-    <script>
-        window.onload = function() {
-            // Check if there's a flash message in the session and display it as a native alert
-            const flashMessage = "{{ get_flashed_messages()[0] if get_flashed_messages() else '' }}";
-            if (flashMessage) {
-                alert(flashMessage); // Show the native browser alert
-            }
+{% block content %}
+<h1 class="mt-5">Din Profil: {{ user.username }}</h1>
+<div class="text-center">
+    <img 
+        src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+        alt="Profilbillede" 
+        class="profile-picture-large mb-3"
+        style="max-width: 150px; max-height: 150px; border-radius: 50%; object-fit: cover;">
+    <form id="profilePictureForm" enctype="multipart/form-data" onsubmit="uploadProfilePicture(event)">
+        <input type="file" name="profile_picture" accept="image/*" class="form-control mb-3">
+        <button type="submit" class="btn btn-primary">Upload nyt billede</button>
+    </form>
+</div>
 
-            // Apply the saved theme
-            const theme = localStorage.getItem('theme');
-            if (theme) {
-                document.body.className = theme + '-theme';
-            }
-        };
-
-        function uploadProfilePicture(event) {
-            event.preventDefault(); // Prevent the form from submitting normally
-            const form = document.getElementById('profilePictureForm');
-            const formData = new FormData(form);
-        
-            fetch('{{ url_for("upload_profile_picture") }}', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    // Handle non-200 HTTP responses
-                    return response.json().then(data => {
-                        throw new Error(data.message || 'Der opstod en fejl.');
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.status !== 'success') {
-                    // Show error message
-                    alert(data.message);
-                } else {
-                    // Reload the page to reflect the updated profile picture
-                    location.reload(); // Reload the page
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // Show error message
-                alert(error.message || 'Der opstod en fejl. Prøv igen senere.');
-            });
-        }
-
-        function openProfileModal(profilePicture, username) {
-            document.getElementById('modalProfilePicture').src = profilePicture;
-            document.getElementById('modalUsername').textContent = username;
-
-            document.getElementById('profileModal').style.display = 'block';
-            document.getElementById('profileModalOverlay').style.display = 'block';
-        }
-
-        function closeProfileModal() {
-            document.getElementById('profileModal').style.display = 'none';
-            document.getElementById('profileModalOverlay').style.display = 'none';
-        }
-
-        function confirmDeleteAccount() {
-            const confirmation = confirm("Er du sikker på, at du vil slette din konto? Denne handling kan ikke fortrydes.");
-            if (confirmation) {
-                // Redirect to the delete account route
-                window.location.href = "{{ url_for('delete_account') }}";
-            }
-        }
-    </script>
-</head>
-<body class="container d-flex flex-column">
-    <nav class="navbar fixed-top d-flex justify-content-between">
-        <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
-        <div class="d-flex align-items-center">
-            <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                    <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
-                    <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
-                    <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
-                    <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-                    <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
-                    <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
-                </div>
+<div class="text-center mt-5">
+    <h3>Skift brugernavn</h3>
+    {% if cooldown_message %}
+        <p class="text-danger">{{ cooldown_message }}</p>
+    {% else %}
+        <form id="changeUsernameForm" method="post" action="{{ url_for('change_username') }}" onsubmit="return confirmUsernameChange()">
+            <div class="form-group">
+                <input 
+                    type="text" 
+                    name="new_username" 
+                    class="form-control mb-3" 
+                    placeholder="Indtast nyt brugernavn" 
+                    required 
+                    autocomplete="off">
+                <input type="hidden" name="confirm_change" value="1">
             </div>
-            <a href="{{ url_for('profile') }}">
-                <img 
-                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                    alt="Profilbillede" 
-                    class="profile-picture"
-                    id="profilePicture"
-                >
-            </a>
-        </div>
-    </nav>
-    <br>
-    <h1 class="mt-5">Din Profil: {{ user.username }}</h1>
-    <div class="text-center">
-        <img 
-            src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-            alt="Profilbillede" 
-            class="profile-picture-large mb-3">
-        <form id="profilePictureForm" enctype="multipart/form-data" onsubmit="uploadProfilePicture(event)">
-            <input type="file" name="profile_picture" accept="image/*" class="form-control mb-3">
-            <button type="submit" class="btn btn-primary">Upload nyt billede</button>
+            <button type="submit" class="btn btn-primary">Opdater brugernavn</button>
         </form>
-    </div>
-    <div id="profileModalOverlay" onclick="closeProfileModal()" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1040;"></div>
-    <div id="profileModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);">
-        <span onclick="closeProfileModal()" style="cursor: pointer; color: red; font-weight: bold; float: right;">&times;</span>
-        <img id="modalProfilePicture" src="" alt="Profilbillede" class="img-fluid rounded" style="max-width: 100%; max-height: 400px; object-fit: cover;">
-        <p id="modalUsername" class="mt-3"></p>
-    </div>
-    <div class="text-center mt-5">
-        <h3>Skift brugernavn</h3>
-        {% if cooldown_message %}
-            <!-- Display the cooldown message as text -->
-            <p class="text-danger">{{ cooldown_message }}</p>
-        {% else %}
-            <!-- Display the form if no cooldown is active -->
-            <form id="changeUsernameForm" method="post" action="{{ url_for('change_username') }}" onsubmit="return confirmUsernameChange()">
-                <div class="form-group">
-                    <input 
-                        type="text" 
-                        name="new_username" 
-                        class="form-control mb-3" 
-                        placeholder="Indtast nyt brugernavn" 
-                        required 
-                        autocomplete="off">
-                    <input type="hidden" name="confirm_change" value="1"> <!-- Hidden confirmation field -->
-                </div>
-                <button type="submit" class="btn btn-primary">Opdater brugernavn</button>
-            </form>
-        {% endif %}
-    </div>
-    
-    <script>
-        function confirmUsernameChange() {
-            return confirm("Er du sikker på at du vil ændre dit navn? Der vil gå 7 dage før du kan ændre det igen.");
+    {% endif %}
+</div>
+
+<div>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
+</div>
+{% endblock %}
+
+{% block extra_buttons %}
+<a href="javascript:void(0);" onclick="confirmDeleteAccount()" class="btn btn-danger">Slet konto</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.onload = function() {
+        const flashMessage = "{{ get_flashed_messages()[0] if get_flashed_messages() else '' }}";
+        if (flashMessage) {
+            alert(flashMessage);
         }
-    </script>
-    <div>
-        <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
-    </div>
-    <div class="logout-container">
-        <a href="javascript:void(0);" onclick="confirmDeleteAccount()" class="btn btn-danger">Slet konto</a>
-        <a href="{{ url_for('logout') }}" class="btn btn-secondary">Log ud</a>
-    </div>
-</body>
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</html>
+
+        const theme = localStorage.getItem('theme');
+        if (theme) {
+            document.body.className = theme + '-theme';
+        }
+    };
+
+    function uploadProfilePicture(event) {
+        event.preventDefault();
+        const form = document.getElementById('profilePictureForm');
+        const formData = new FormData(form);
+
+        fetch('{{ url_for("upload_profile_picture") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || 'Der opstod en fejl.');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status !== 'success') {
+                alert(data.message);
+            } else {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(error.message || 'Der opstod en fejl. Prøv igen senere.');
+        });
+    }
+
+    function confirmDeleteAccount() {
+        const confirmation = confirm("Er du sikker på, at du vil slette din konto? Denne handling kan ikke fortrydes.");
+        if (confirmation) {
+            window.location.href = "{{ url_for('delete_account') }}";
+        }
+    }
+</script>
+{% endblock %}
