@@ -68,6 +68,11 @@ class Friendship(db.Model):
     user = db.relationship('User', foreign_keys=[user_id], backref='friendships')
     friend = db.relationship('User', foreign_keys=[friend_id], backref='friends')
 
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'public, max-age=31536000'
+    return response
+
 @app.route('/')
 def index():
     if 'user_id' in session:
