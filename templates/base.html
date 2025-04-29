@@ -1,4 +1,3 @@
-<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/base.html -->
 <!DOCTYPE html>
 <html lang="da">
 <head>
@@ -65,19 +64,20 @@
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="flash-container">
+    <div class="flash-container">
         <div class="flash-message">
-          {% for category, message in messages %}
+            {% for category, message in messages %}
             <div class="alert alert-{{ category }}" role="alert">
-              {{ message }}
+                {{ message }}
             </div>
-          {% endfor %}
+            {% endfor %}
         </div>
-      </div>
+    </div>
     {% endif %}
     {% endwith %}
 
     <!-- Navbar -->
+    {% if show_navbar %}
     <nav class="navbar fixed-top d-flex justify-content-between">
         <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
         <div class="d-flex align-items-center">
@@ -95,34 +95,25 @@
                 </div>
             </div>
             <a href="{{ url_for('profile') }}">
-                <img 
-                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                    alt="Profilbillede" 
-                    class="profile-picture"
-                    id="profilePicture"
+                <img
+                {% if user and user.profile_picture %}
+                    src="{{ user.profile_picture }}"
+                {% else %}
+                    src="{{ url_for('static', filename='icon-5355896_640.png') }}"
+                {% endif %}
+                alt="Profilbillede"
                 >
             </a>
         </div>
     </nav>
+    {% endif %}
 
-    <!-- Main content -->
-    <div class="flex-grow-1">
-        {% block content %}
-        {% endblock %}
-    </div>
-
-    <!-- Logout and additional buttons -->
+    <!-- Logout button -->
+    {% if show_navbar %}
     <div class="logout-container">
-        {% block extra_buttons %}
-        {% endblock %}
         <a href="{{ url_for('logout') }}" class="btn btn-secondary">Log ud</a>
     </div>
-
-    <!-- Cookie banner -->
-    <div id="cookie-banner" style="display: none; position: fixed; bottom: 0; width: 100%; background: #343a40; color: white; padding: 10px; text-align: center; z-index: 1000;">
-        <span>Vi bruger cookies til at holde dig logget ind og gemme dine præferencer. Læs vores <a href="{{ url_for('cookie_policy') }}" style="color: #ffc107;">cookiepolitik</a>.</span>
-        <button id="accept-cookies" class="btn btn-success btn-sm ml-3">Accepter</button>
-    </div>
+    {% endif %}
 
     <!-- Footer links -->
     <div class="policy-links">
@@ -130,13 +121,12 @@
         <a href="{{ url_for('privacy_policy') }}">Privatlivspolitik</a>
     </div>
 
-    <a href="{{ url_for('logout') }}" class="btn btn-secondary logout-button">Log ud</a>
+    <!-- Cookie banner -->
+    <div id="cookie-banner" style="display: none; position: fixed; bottom: 0; width: 100%; background: #343a40; color: white; padding: 10px; text-align: center; z-index: 1000;">
+        <span>Vi bruger cookies til at forbedre din oplevelse. Læs vores <a href="{{ url_for('cookie_policy') }}" style="color: #ffc107;">cookiepolitik</a>.</span>
+        <button id="accept-cookies" class="btn btn-success btn-sm ml-3">Accepter</button>
+    </div>
 
-    <!-- Scripts -->
-    {% block scripts %}
-    {% endblock %}
+    {% block content %}{% endblock %}
 </body>
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </html>

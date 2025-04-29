@@ -1,41 +1,28 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Log ind</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        .register-link {
-            margin-left: 0;
-            padding-left: 0;
-        }
-    </style>
-    <script>
-        window.onload = function() {
-            var flashMessage = "{{ get_flashed_messages()|join(' ') }}";
-            if (flashMessage) {
-                alert(flashMessage);
-            }
-        };
-    </script>
-</head>
-<body class="container">
-    <h1 class="mt-5">Log ind</h1>
-    <p style="color: red;">OBS! Denne side er udelukkende til personer over 18 år.</p>
-    <form action="{{ url_for('login') }}" method="post">
-        <div class="form-group">
-            <label for="username">Brugernavn</label>
-            <input type="text" class="form-control" id="username" name="username" required>
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h1 class="text-center">Log ind</h1>
+            <p class="text-danger text-center">OBS! Denne side er udelukkende til personer over 18 år.</p>
+            <form action="{{ url_for('login') }}" method="post" class="mt-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label for="username">Brugernavn</label>
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Indtast dit brugernavn" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Adgangskode</label>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Indtast din adgangskode" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Log ind</button>
+            </form>
+            <div class="text-center mt-3">
+                <span>Ikke bruger endnu?</span><br>
+                <a href="{{ url_for('register') }}" class="btn btn-link">Registrer</a>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="password">Adgangskode</label>
-            <input type="password" class="form-control" id="password" name="password" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Log ind</button>
-    </form>
-    <div class="mt-3">
-        <span>Ikke bruger endnu?</span><br>
-        <a href="{{ url_for('register') }}" class="btn btn-link register-link">Registrer</a>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
