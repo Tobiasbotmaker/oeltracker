@@ -1065,6 +1065,4 @@ def which_beer():
     return render_template('which_beer.html', user=user)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # Opret tabeller til dine modeller
     app.run()
