@@ -212,6 +212,13 @@ class BeerLog(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
+    
+class Session(db.Model):
+    __tablename__ = 'sessions'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(255), unique=True, nullable=False)
+    data = db.Column(db.Text, nullable=False)
+    expiry = db.Column(db.DateTime, nullable=False)
 
 class User(db.Model):
     __tablename__ = 'users'
