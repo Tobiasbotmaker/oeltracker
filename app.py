@@ -172,7 +172,7 @@ def cleanup_rate_limit_data():
 
 app = Flask(__name__, static_folder='static')
 load_dotenv()  # Indlæs miljøvariabler fra en .env-fil
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL') + '?sslmode=require'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Slå ændringssporing fra (for performance)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')  # Brug miljøvariabel
 app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pictures'
