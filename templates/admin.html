@@ -32,6 +32,7 @@
         <h2>Brugere</h2>
         <!-- Delete All Button -->
         <form action="{{ url_for('delete_all_users') }}" method="post" onsubmit="return confirmDeleteAll();">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-danger">Slet Alle Brugere</button>
         </form>
     </div>
@@ -56,6 +57,7 @@
                 <td>
                     <!-- Delete Single User Button -->
                     <form action="{{ url_for('delete_user', user_id=user.id) }}" method="post" onsubmit="return confirmDelete('{{ user.username }}');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger">Slet</button>
                     </form>
                 </td>

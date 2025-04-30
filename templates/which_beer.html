@@ -9,6 +9,7 @@ Hvilken øl skal jeg drikke?
 <p>Indtast de øl du har derhjemme eller de øl du har overvejet at købe, og lad hjulet vælge for dig</p>
 <div class="form-group">
     <form onsubmit="addBeer(); return false;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" id="beerName" class="form-control" placeholder="Tilføj en øl">
         <button type="submit" class="btn btn-primary mt-2">Tilføj</button>
     </form>

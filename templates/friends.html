@@ -7,6 +7,7 @@
 <h1 class="mt-5">Venner</h1>
 <div id="flash-messages"></div>
 <form method="post" class="mb-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="input-group">
         <input 
             type="text" 

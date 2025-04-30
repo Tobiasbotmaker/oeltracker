@@ -13,6 +13,7 @@ Din Profil
         class="profile-picture-large mb-3"
         style="max-width: 150px; max-height: 150px; border-radius: 50%; object-fit: cover;">
     <form id="profilePictureForm" enctype="multipart/form-data" onsubmit="uploadProfilePicture(event)">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="file" name="profile_picture" accept="image/*" class="form-control mb-3">
         <button type="submit" class="btn btn-primary">Upload nyt billede</button>
     </form>
@@ -24,6 +25,7 @@ Din Profil
         <p class="text-danger">{{ cooldown_message }}</p>
     {% else %}
         <form id="changeUsernameForm" method="post" action="{{ url_for('change_username') }}" onsubmit="return confirmUsernameChange()">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <input 
                     type="text" 
