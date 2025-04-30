@@ -5,8 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Øl tracker{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+
     <style>
         .logout-container {
             position: fixed;
@@ -31,27 +36,6 @@
             text-decoration: underline;
         }
     </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            if (!localStorage.getItem('cookiesAccepted')) {
-                document.getElementById('cookie-banner').style.display = 'block';
-            }
-
-            document.getElementById('accept-cookies').addEventListener('click', function () {
-                localStorage.setItem('cookiesAccepted', 'true');
-                document.getElementById('cookie-banner').style.display = 'none';
-            });
-        });
-
-        window.onload = function () {
-            var theme = localStorage.getItem('theme');
-            if (!theme) {
-                theme = 'classic';
-                localStorage.setItem('theme', theme);
-            }
-            document.body.className = theme + '-theme';
-        };
-    </script>
 </head>
 <body class="container d-flex flex-column">
     <!-- Flash messages -->
@@ -71,32 +55,32 @@
 
     <!-- Navbar -->
     {% if show_navbar is not defined or show_navbar %}
-    <nav class="navbar fixed-top d-flex justify-content-between">
+    <nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light">
         <a class="navbar-brand" href="{{ url_for('index') }}">Øl tracker</a>
-        <div class="d-flex align-items-center">
-            <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                    <a class="dropdown-item" href="{{ url_for('friends') }}">Venner</a>
-                    <a class="dropdown-item" href="{{ url_for('map') }}">Kort</a>
-                    <a class="dropdown-item" href="{{ url_for('settings') }}">Indstillinger</a>
-                    <a class="dropdown-item" href="{{ url_for('leaderboard') }}">Leaderboard</a>
-                    <a class="dropdown-item" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
-                    <a class="dropdown-item" href="{{ url_for('about') }}">Om os/Kontakt</a>
-                </div>
-            </div>
-            <a href="{{ url_for('profile') }}">
-                <img
-                {% if user and user.profile_picture %}
-                    src="{{ user.profile_picture }}"
-                {% else %}
-                    src="{{ url_for('static', filename='icon-5355896_640.png') }}"
-                {% endif %}
-                alt="Profilbillede"
-                >
-            </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('friends') }}">Venner</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('map') }}">Kort</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('settings') }}">Indstillinger</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('leaderboard') }}">Leaderboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('which_beer') }}">Hvilken øl skal jeg drikke?</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('about') }}">Om os/Kontakt</a>
+                </li>
+            </ul>
         </div>
     </nav>
     {% endif %}
@@ -121,5 +105,35 @@
     </div>
 
     {% block content %}{% endblock %}
+
+    <!-- jQuery and Popper.js (required for Bootstrap) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.4.4/dist/umd/popper.min.js"></script>
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!localStorage.getItem('cookiesAccepted')) {
+                document.getElementById('cookie-banner').style.display = 'block';
+            }
+
+            document.getElementById('accept-cookies').addEventListener('click', function () {
+                localStorage.setItem('cookiesAccepted', 'true');
+                document.getElementById('cookie-banner').style.display = 'none';
+            });
+        });
+
+        window.onload = function () {
+            var theme = localStorage.getItem('theme');
+            if (!theme) {
+                theme = 'classic';
+                localStorage.setItem('theme', theme);
+            }
+            document.body.className = theme + '-theme';
+        };
+    </script>
 </body>
 </html>
