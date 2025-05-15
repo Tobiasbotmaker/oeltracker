@@ -1,0 +1,56 @@
+<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/credits.html -->
+{% extends "base.html" %}
+
+{% block title %}
+Credits
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Credits</h1>
+    <p>Dette projekt bruger følgende open source-teknologier og ressourcer:</p>
+
+    <h2>Backend</h2>
+    <ul>
+        <li><a href="https://flask.palletsprojects.com/" target="_blank">Flask</a> - Web framework (MIT-licens)</li>
+        <li><a href="https://flask-sqlalchemy.palletsprojects.com/" target="_blank">Flask-SQLAlchemy</a> - Database ORM (MIT-licens)</li>
+        <li><a href="https://flask-migrate.readthedocs.io/" target="_blank">Flask-Migrate</a> - Database migrations (MIT-licens)</li>
+        <li><a href="https://flask-wtf.readthedocs.io/" target="_blank">Flask-WTF</a> - CSRF-beskyttelse og formularhåndtering (BSD-licens)</li>
+        <li><a href="https://pythonhosted.org/Flask-Session/" target="_blank">Flask-Session</a> - Server-side session management (MIT-licens)</li>
+        <li><a href="https://flask-caching.readthedocs.io/" target="_blank">Flask-Caching</a> - Caching til forbedret ydeevne (BSD-licens)</li>
+        <li><a href="https://flask-compress.readthedocs.io/" target="_blank">Flask-Compress</a> - Komprimering af HTTP-responser (MIT-licens)</li>
+    </ul>
+
+    <h2>Frontend</h2>
+    <ul>
+        <li><a href="https://getbootstrap.com/" target="_blank">Bootstrap</a> - Frontend framework til styling og layout (MIT-licens)</li>
+        <li><a href="https://icons.getbootstrap.com/" target="_blank">Bootstrap Icons</a> - Ikoner til UI-elementer (MIT-licens)</li>
+        <li><a href="https://jinja.palletsprojects.com/" target="_blank">Jinja2</a> - Templating-motor til dynamisk HTML (BSD-licens)</li>
+        <li><a href="https://jquery.com/" target="_blank">jQuery</a> - JavaScript-bibliotek til DOM-manipulation (MIT-licens)</li>
+    </ul>
+
+    <h2>Andre ressourcer</h2>
+    <ul>
+        <li><a href="https://leafletjs.com/" target="_blank">Leaflet</a> - Kortvisning og geolokation (BSD-licens)</li>
+        <li><a href="https://python-pillow.org/" target="_blank">Pillow</a> - Billedbehandling til profilbilleder (HPND-licens)</li>
+    </ul>
+
+    <h2>Billeder</h2>
+    <ul>
+        <li>Standardprofilbillede: Hentet fra <a href="https://pixabay.com/" target="_blank">Pixabay</a> (CC0-licens)</li>
+    </ul>
+
+    <h2>Hosting og sikkerhed</h2>
+    <ul>
+        <li>HTTPS og sikkerhedsforanstaltninger implementeret med Flask's sikkerhedsfunktioner.</li>
+        <li>Rate limiting for at beskytte mod misbrug.</li>
+        <li>Adgangskoder gemmes som hashes ved hjælp af sikre algoritmer.</li>
+    </ul>
+
+    <h2>Tak til</h2>
+    <ul>
+        <li>Alle bidragydere til de nævnte open source-projekter.</li>
+        <li>Brugere af Øl Tracker for deres støtte og feedback.</li>
+    </ul>
+</div>
+{% endblock %}

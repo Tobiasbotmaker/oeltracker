@@ -7,13 +7,16 @@
 <h1 class="mt-5">Indstillinger</h1>
 
 <!-- Lokationsindstillinger -->
-<button id="locationToggle" class="btn btn-primary" onclick="toggleLocationAccess()">Enable Location Access</button>
+<button id="locationToggle" class="btn btn-primary">Enable Location Access</button>
 <span id="locationStatus">Status: Not allowed</span>
 <br><br>
 
+<!-- Skjult felt til at sende lokationstilladelse til JavaScript -->
+<input type="hidden" id="allowLocation" value="{{ 'true' if user.allow_location else 'false' }}">
+
 <!-- Temaindstillinger -->
 <label for="themeSelect">Vælg Tema:</label>
-<select id="themeSelect" class="form-control" onchange="changeTheme(this.value)">
+<select id="themeSelect" class="form-control">
     <option value="classic">Classic</option>
     <option value="grøn">Grøn</option>
     <option value="roskilde">Roskilde</option>
@@ -21,82 +24,8 @@
     <option value="dag">Dag</option>
 </select>
 <br><br>
-
-<a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
 {% endblock %}
 
 {% block scripts %}
-<script>
-    window.onload = function() {
-        // Tjek og anvend tema
-        var theme = localStorage.getItem('theme');
-        if (!theme) {
-            theme = 'classic'; // Standard tema
-            localStorage.setItem('theme', theme);
-        }
-        document.body.className = theme + '-theme';
-    
-        var themeSelect = document.getElementById('themeSelect');
-        if (themeSelect) {
-            themeSelect.value = theme;
-        }
-    
-        // Håndter lokationsadgang
-        var locationAccess = localStorage.getItem('locationPermission');
-        if (locationAccess === 'granted') {
-            document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
-            document.getElementById('locationStatus').innerText = 'Status: Tilladt';
-        } else if (locationAccess === 'denied') {
-            document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
-            document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
-        } else {
-            document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
-            document.getElementById('locationStatus').innerText = 'Status: Ikke valgt';
-        }
-    };
-
-    function changeTheme(theme) {
-        // Gem det valgte tema i localStorage
-        localStorage.setItem('theme', theme);
-        // Anvend temaet på body
-        document.body.className = theme + '-theme';
-    }
-
-    function toggleLocationAccess() {
-        var locationAccess = localStorage.getItem('locationPermission');
-        if (locationAccess === 'granted') {
-            // Brugeren vælger at slå lokationsadgang fra
-            var confirmResult = confirm("Er du sikker på, at du vil slå lokationsadgang fra?");
-            if (confirmResult) {
-                localStorage.setItem('locationPermission', 'denied');
-                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Til';
-                document.getElementById('locationStatus').innerText = 'Status: Ikke tilladt';
-            }
-        } else {
-            // Brugeren vælger at slå lokationsadgang til
-            var confirmResult = confirm("Vil du give tilladelse til at bruge din lokalitet?");
-            if (confirmResult) {
-                // Gem tilladelsen med det samme
-                localStorage.setItem('locationPermission', 'granted');
-                document.getElementById('locationToggle').innerText = 'Slå lokationsadgang Fra';
-                document.getElementById('locationStatus').innerText = 'Status: Tilladt';
-    
-                // Prøv at hente lokationen, men ændr ikke indstillingen ved fejl
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        function (position) {
-                            alert("Lokation fundet!");
-                        },
-                        function (error) {
-                            // Lokationen kan ikke findes, men tilladelsen er stadig givet
-                            alert("Din lokalitet er ikke tilgængelig i øjeblikket, men tilladelsen er givet.");
-                        }
-                    );
-                } else {
-                    alert("Geolocation understøttes ikke af denne browser, men tilladelsen er givet.");
-                }
-            }
-        }
-    }
-</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}

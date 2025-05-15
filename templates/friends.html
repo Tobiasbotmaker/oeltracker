@@ -1,10 +1,9 @@
-<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/friends.html -->
 {% extends "base.html" %}
 
 {% block title %}Venner{% endblock %}
 
 {% block content %}
-<h1 class="mt-5">Venner</h1>
+<h1 class="mt-5">Søg efter brugere</h1>
 <div id="flash-messages"></div>
 <form method="post" class="mb-3">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -12,7 +11,8 @@
         <input 
             type="text" 
             class="form-control" 
-            name="username" 
+            id="searchUsername" 
+            name="search_username" 
             placeholder="Søg efter brugere" 
             required 
             autocomplete="off">
@@ -22,228 +22,59 @@
     </div>
 </form>
 
-<!-- Profilmodal -->
-<div id="profileModalOverlay" onclick="closeProfileModal()" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1040;"></div>
-<div id="profileModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);">
-    <span onclick="closeProfileModal()" style="cursor: pointer; color: red; font-weight: bold; float: right;">&times;</span>
-    <img id="modalProfilePicture" src="" alt="Profilbillede" class="img-fluid rounded" style="max-width: 100%; max-height: 400px; object-fit: cover;">
-    <p id="modalUsername" class="mt-3"></p>
-</div>
-
 <!-- Søgeresultater -->
-{% if request.method == 'POST' and search_results %}
-<h2 class="mt-4">Resultater</h2>
-<ul class="list-group mb-3">
-    {% for result in search_results %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-        <span class="d-flex align-items-center">
-            <img src="{{ result.profile_picture }}" 
-                 alt="Profilbillede" 
-                 class="rounded-circle mr-3" 
-                 style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
-                 onclick="openProfileModal('{{ result.profile_picture }}', '{{ result.username }}')">
-            {{ result.username }}
-        </span>
-        {% if result.status == 'none' %}
-        <button class="btn btn-primary btn-sm" onclick="addFriend({{ result.id }}, this)">Send anmodning</button>
-        {% elif result.status == 'pending_sent' %}
-        <button class="btn btn-warning btn-sm" onclick="cancelFriendRequest({{ result.id }}, this)">Annuller anmodning</button>
-        {% elif result.status == 'pending_received' %}
-        <button class="btn btn-success btn-sm" onclick="acceptFriendRequest({{ result.id }})">Accepter</button>
-        <button class="btn btn-danger btn-sm" onclick="rejectFriendRequest({{ result.id }})">Afvis</button>
-        {% elif result.status == 'accepted' %}
-        <button class="btn btn-secondary btn-sm" disabled>Allerede venner</button>
-        {% endif %}
-    </li>
-    {% endfor %}
-</ul>
-{% elif request.method == 'POST' %}
-<h2 class="mt-4">Resultater</h2>
-<p class="text-muted">Ingen resultater</p>
-{% endif %}
-
-<!-- Sektion for dine venner -->
-<h2 class="mt-4">Dine venner</h2>
-<ul class="list-group mb-3">
-    {% if friends %}
-        {% for friend in friends %}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span class="d-flex align-items-center">
-                <img src="{{ friend.profile_picture }}" 
-                     alt="Profilbillede" 
-                     class="rounded-circle mr-3" 
-                     style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
-                     onclick="openProfileModal('{{ friend.profile_picture }}', '{{ friend.username }}')">
-                {{ friend.username }}
-                {% if friend.total_beers > 0 %}
-                    - Øl drukket: {{ friend.total_beers }}
-                    {% if friend.last_beer_time %}
-                        - Sidste øl drukket: {{ friend.last_beer_time }}
-                    {% endif %}
-                {% else %}
-                    - Ingen øl drukket endnu
-                {% endif %}
-                - Venner siden: {{ friend.created_at }}
-            </span>
-            <button class="btn btn-danger btn-sm" onclick="removeFriend({{ friend.friendship_id }}, this)">Fjern</button>
+{% if search_results %}
+    <h2 class="mt-4">Resultater</h2>
+    <ul class="list-group mb-3">
+        {% for user in search_results %}
+        <li class="list-group-item d-flex align-items-center">
+            <a href="{{ url_for('profile', user_id=user.id) }}" class="stretched-link text-decoration-none"></a>
+            <img 
+                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                alt="Profilbillede" 
+                class="rounded-circle mr-3" 
+                style="width: 40px; height: 40px; object-fit: cover;">
+            <span>{{ user.username }}</span>
         </li>
         {% endfor %}
-    {% else %}
-        <p class="text-muted">Du har ingen venner endnu</p>
-    {% endif %}
-</ul>
+    </ul>
+{% endif %}
+
+<!-- Dine venner -->
+<h2 class="mt-4">Dine venner</h2>
+{% if friends %}
+    <ul class="list-group mb-3">
+        {% for user in friends %}
+        <li class="list-group-item d-flex align-items-center">
+            <a href="{{ url_for('profile', user_id=user.id) }}" class="stretched-link text-decoration-none"></a>
+            <img 
+                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                alt="Profilbillede" 
+                class="rounded-circle mr-3" 
+                style="width: 40px; height: 40px; object-fit: cover;">
+            <span>{{ user.username }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="text-muted">Du har ingen venner endnu</p>
+{% endif %}
 
 <!-- Venneanmodninger -->
-<h2 class="mt-4">Venneanmodninger</h2>
-<ul class="list-group mb-3">
-    {% if friend_requests %}
-    {% for request in friend_requests %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-        <span class="d-flex align-items-center">
-            <img src="{{ request.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                 alt="Profilbillede" 
-                 class="rounded-circle mr-3" 
-                 style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
-                 onclick="openProfileModal('{{ request.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ request.username }}')">
-            {{ request.username }}
-        </span>
-        <div>
-            <button class="btn btn-success btn-sm" onclick="acceptFriendRequest({{ request.id }})">Accepter</button>
-            <button class="btn btn-danger btn-sm" onclick="rejectFriendRequest({{ request.id }})">Afvis</button>
-        </div>
-    </li>
-    {% endfor %}
-    {% else %}
-        <p class="text-muted">Du har ingen venneanmodninger</p>
-    {% endif %}
-</ul>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // CSRF-token til POST-forespørgsler
-    const csrfToken = "{{ csrf_token }}";
-
-    // Åbn profilmodal
-    function openProfileModal(profilePicture, username) {
-        document.getElementById('modalProfilePicture').src = profilePicture;
-        document.getElementById('modalUsername').textContent = username;
-        document.getElementById('profileModal').style.display = 'block';
-        document.getElementById('profileModalOverlay').style.display = 'block';
-    }
-
-    // Luk profilmodal
-    function closeProfileModal() {
-        document.getElementById('profileModal').style.display = 'none';
-        document.getElementById('profileModalOverlay').style.display = 'none';
-    }
-
-    // Send venneanmodning
-    function addFriend(friendId, button) {
-        console.log('addFriend kaldt med friendId:', friendId);
-        button.disabled = true;
-        fetch(`/send_friend_request/${friendId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Svar fra server:', data);
-            if (data.status === 'success') {
-                button.textContent = 'Annuller anmodning';
-                button.classList.remove('btn-primary');
-                button.classList.add('btn-warning');
-                button.setAttribute('onclick', `cancelFriendRequest(${friendId}, this)`);
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-            button.disabled = false;
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-            button.disabled = false;
-        });
-    }
-
-    // Annuller venneanmodning
-    function cancelFriendRequest(friendId, button) {
-        console.log('cancelFriendRequest kaldt med friendId:', friendId);
-        button.disabled = true;
-        fetch(`/cancel_friend_request/${friendId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Svar fra server:', data);
-            if (data.status === 'success') {
-                button.textContent = 'Send anmodning';
-                button.classList.remove('btn-warning');
-                button.classList.add('btn-primary');
-                button.setAttribute('onclick', `addFriend(${friendId}, this)`);
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-            button.disabled = false;
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-            button.disabled = false;
-        });
-    }
-
-    // Accepter venneanmodning
-    function acceptFriendRequest(requestId) {
-        console.log('acceptFriendRequest kaldt med requestId:', requestId);
-        fetch(`/accept_friend_request/${requestId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Svar fra server:', data);
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-        });
-    }
-
-    // Afvis venneanmodning
-    function rejectFriendRequest(requestId) {
-        console.log('rejectFriendRequest kaldt med requestId:', requestId);
-        fetch(`/reject_friend_request/${requestId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Svar fra server:', data);
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-        });
-    }
-</script>
+{% if friend_requests %}
+    <h2 class="mt-4">Venneanmodninger</h2>
+    <ul class="list-group mb-3">
+        {% for user in friend_requests %}
+        <li class="list-group-item d-flex align-items-center">
+            <a href="{{ url_for('profile', user_id=user.id) }}" class="stretched-link text-decoration-none"></a>
+            <img 
+                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                alt="Profilbillede" 
+                class="rounded-circle mr-3" 
+                style="width: 40px; height: 40px; object-fit: cover;">
+            <span>{{ user.username }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+{% endif %}
 {% endblock %}

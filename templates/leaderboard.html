@@ -26,33 +26,15 @@ Leaderboard
                 <tr>
                     <td>{{ loop.index }}</td>
                     <td>
-                        <div class="d-flex justify-content-between align-items-center" data-user-id="{{ user.id }}">
-                            <!-- Profilbillede og brugernavn -->
-                            <div class="d-flex align-items-center">
+                        <div class="d-flex align-items-center">
+                            <a href="{{ url_for('profile', user_id=user.id) }}">
                                 <img 
-                                    src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-                                    alt="Profilbillede" 
-                                    class="rounded-circle mr-2" 
-                                    style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" 
-                                    onclick="openProfileModal('{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}', '{{ user.username }}')">
-                                <span>{{ user.username }}</span>
-                            </div>
-                        
-                            <!-- Knapper -->
-                            {% if user.id != session['user_id'] %}
-                            <div>
-                                {% if user.status == 'none' %}
-                                <button class="btn btn-primary btn-sm" onclick="addFriend({{ user.id }}, this)">Send anmodning</button>
-                                {% elif user.status == 'pending_sent' %}
-                                <button class="btn btn-warning btn-sm" onclick="cancelFriendRequest({{ user.id }}, this)">Annuller anmodning</button>
-                                {% elif user.status == 'pending_received' %}
-                                <button class="btn btn-success btn-sm" onclick="acceptFriendRequest({{ user.friendship_id }}, this)">Accepter</button>
-                                <button class="btn btn-danger btn-sm" onclick="rejectFriendRequest({{ user.friendship_id }}, this)">Afvis</button>
-                                {% elif user.status == 'accepted' %}
-                                <button class="btn btn-danger btn-sm" onclick="removeFriend({{ user.friendship_id }}, this)">Fjern ven</button>
-                                {% endif %}
-                            </div>
-                            {% endif %}
+                                src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+                                alt="Profilbillede" 
+                                class="rounded-circle mr-2 profile-picture" 
+                                style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;">
+                            </a>
+                            <span>{{ user.username }}</span>
                         </div>
                     </td>
                     <td>{{ user.total_beers }}</td>
@@ -64,160 +46,9 @@ Leaderboard
 </div>
 {% endfor %}
 
-<!-- Profile Modal -->
-<div id="profileModal" class="modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Profil</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Luk">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body text-center">
-                <img id="modalProfilePicture" src="" alt="Profilbillede" class="img-fluid rounded">
-                <p id="modalUsername" class="mt-3"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Luk</button>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="text-left">
-    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
-</div>
+
 {% endblock %}
 
 {% block scripts %}
-<script>
-    const csrfToken = "{{ csrf_token }}";
-
-    function openProfileModal(profilePicture, username) {
-        console.log('Åbner profilmodal for:', username);
-        document.getElementById('modalProfilePicture').src = profilePicture;
-        document.getElementById('modalUsername').textContent = username;
-        $('#profileModal').modal('show');
-    }
-
-    function addFriend(friendId, button) {
-        button.disabled = true;
-        fetch(`/send_friend_request/${friendId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                button.textContent = 'Annuller anmodning';
-                button.classList.remove('btn-primary');
-                button.classList.add('btn-warning');
-                button.setAttribute('onclick', `cancelFriendRequest(${friendId}, this)`);
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-            button.disabled = false;
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-            button.disabled = false;
-        });
-    }
-
-    function cancelFriendRequest(friendId, button) {
-        button.disabled = true;
-        fetch(`/cancel_friend_request/${friendId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                button.textContent = 'Send anmodning';
-                button.classList.remove('btn-warning');
-                button.classList.add('btn-primary');
-                button.setAttribute('onclick', `addFriend(${friendId}, this)`);
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-            button.disabled = false;
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-            button.disabled = false;
-        });
-    }
-
-    function acceptFriendRequest(requestId, button) {
-        button.disabled = true;
-        fetch(`/accept_friend_request/${requestId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-        });
-    }
-
-    function rejectFriendRequest(requestId, button) {
-        button.disabled = true;
-        fetch(`/reject_friend_request/${requestId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-        });
-    }
-
-    function removeFriend(friendshipId, button) {
-        button.disabled = true;
-        fetch(`/remove_friend/${friendshipId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert(data.message || 'Der opstod en fejl.');
-            }
-        })
-        .catch(error => {
-            console.error('Netværksfejl:', error);
-        });
-    }
-</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}

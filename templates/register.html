@@ -6,24 +6,80 @@
     <div class="row justify-content-center">
         <div class="col-md-6">
             <h1 class="text-center">Registrer</h1>
-            <p class="text-center">Velkommen til Øl tracker! Her kan du og dine venner holde øje med, hvor mange øl I har drukket, og hvor I har drukket dem. For at komme i gang, skal du registrere dig med et brugernavn og en adgangskode.</p>
+            <p class="text-center">Velkommen til Øl Tracker! Her kan du og dine venner holde øje med, hvor mange øl I har drukket, og hvor I har drukket dem. For at komme i gang, skal du registrere dig med et brugernavn og en adgangskode.</p>
             <p class="text-danger text-center">OBS! Denne side er udelukkende til personer over 18 år.</p>
             <form action="{{ url_for('register') }}" method="post" class="mt-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+                <!-- Brugernavn -->
                 <div class="form-group">
                     <label for="username">Brugernavn</label>
-                    <input type="text" class="form-control" id="username" name="username" placeholder="Hvad vil du gerne kaldes?" required>
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Hvad vil du gerne kaldes? Max 20 tegn" 
+                        maxlength="20"  
+                        required>
                 </div>
+            
+                <!-- Adgangskode -->
                 <div class="form-group">
                     <label for="password">Adgangskode</label>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Vælg en adgangskode" required>
+                    <input 
+                        type="password" 
+                        class="form-control" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Vælg en adgangskode. Max 50 tegn" 
+                        maxlength="50"  
+                        required>
                 </div>
+            
+                <!-- Bekræftelse af alder -->
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="confirm_age" name="confirm_age" required>
+                    <label class="form-check-label" for="confirm_age">Jeg bekræfter, at jeg er over 18 år.</label>
+                </div>
+            
+                <!-- Samtykke til brugervilkår -->
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="accept_terms" name="accept_terms" required>
+                    <label class="form-check-label" for="accept_terms">
+                        Jeg accepterer <a href="{{ url_for('terms') }}" target="_blank">brugervilkårene</a>.
+                    </label>
+                </div>
+            
+                <!-- Samtykke til privatlivspolitik -->
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="accept_privacy_policy" name="accept_privacy_policy" required>
+                    <label class="form-check-label" for="accept_privacy_policy">
+                        Jeg accepterer <a href="{{ url_for('privacy_policy') }}" target="_blank">privatlivspolitikken</a>.
+                    </label>
+                </div>
+            
+                <!-- Tillad lokation -->
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="allow_location" name="allow_location">
+                    <label class="form-check-label" for="allow_location">
+                        (Valgfri) Jeg tillader, at min lokation bruges til at jeg og andre kan se, hvor jeg har drukket øl. (Kan altid ændres senere i indstillingerne.)
+                    </label>
+                </div>
+            
+                <!-- Registreringsknap -->
                 <button type="submit" class="btn btn-primary btn-block">Registrer</button>
             </form>
+
+            <!-- Link til login -->
             <div class="text-center mt-3">
                 <span>Allerede bruger?</span><br>
                 <a href="{{ url_for('login') }}" class="btn btn-link">Log ind</a>
             </div>
+            <!-- Skjult container til fejlbesked -->
+            {% if error_message %}
+            <div id="errorMessage" data-message="{{ error_message }}" style="display: none;"></div>
+            {% endif %}
         </div>
     </div>
 </div>

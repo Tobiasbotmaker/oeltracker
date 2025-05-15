@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -6,24 +6,43 @@ from datetime import datetime, timedelta
 from flask_migrate import Migrate
 import os
 import logging
+import uuid
 from PIL import Image
 from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
 from flask_caching import Cache
 from flask_compress import Compress
 from flask_session import Session
+from werkzeug.utils import secure_filename
 
-def allowed_file(file):
-    """Valider filens MIME-type."""
-    allowed_mime_types = ['image/jpeg', 'image/png']
-    return file.content_type in allowed_mime_types
-def compress_image(filepath, max_size_kb=100):
-    """Compress an image to ensure it is under the specified size in KB."""
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def compress_image(filepath, max_size_kb=100, max_dimensions=(1920, 1080)):
+    """Compress an image to ensure it is under the specified size in KB and dimensions."""
     max_size_bytes = max_size_kb * 1024  # Konverter KB til bytes
     quality = 85  # Startkvalitet
 
     with Image.open(filepath) as img:
         img = img.convert("RGB")  # Sørg for, at billedet er i RGB-format
+
+        # Ret rotation baseret på EXIF-data
+        try:
+            exif = img._getexif()
+            if exif:
+                orientation = exif.get(274)  # 274 er EXIF-tagget for orientering
+                if orientation == 3:
+                    img = img.rotate(180, expand=True)
+                elif orientation == 6:
+                    img = img.rotate(270, expand=True)
+                elif orientation == 8:
+                    img = img.rotate(90, expand=True)
+        except AttributeError:
+            pass  # Hvis der ikke er EXIF-data, fortsæt uden at rotere
+
+        # Reducer billedets dimensioner, hvis det er større end max_dimensions
+        if img.size[0] > max_dimensions[0] or img.size[1] > max_dimensions[1]:
+            img.thumbnail(max_dimensions)
+
         while True:
             # Gem billedet midlertidigt med den aktuelle kvalitet
             img.save(filepath, "JPEG", quality=quality)
@@ -39,6 +58,10 @@ logging.basicConfig(
         logging.FileHandler('app.log', encoding='utf-8')
     ]
 )
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+UPLOAD_FOLDER = 'static/uploads/profile_pictures'
+MAX_IMAGE_SIZE = (300, 300)  # Maksimal størrelse på billedet (bredde, højde)
 
 def get_logged_in_user():
     """Hent den loggede bruger fra sessionen."""
@@ -59,16 +82,21 @@ def get_user_stats(user):
     last_beer_time = user.beers[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if user.beers else None
     return total_beers, last_beer_time
 
-def get_friendship_status(user_id, friend_id):
-    """Hent status for venskab mellem to brugere."""
+def get_friendship_status(user_id, other_user_id):
     friendship = Friendship.query.filter(
-        ((Friendship.user_id == user_id) & (Friendship.friend_id == friend_id)) |
-        ((Friendship.user_id == friend_id) & (Friendship.friend_id == user_id))
+        ((Friendship.user_id == user_id) & (Friendship.friend_id == other_user_id)) |
+        ((Friendship.user_id == other_user_id) & (Friendship.friend_id == user_id))
     ).first()
 
     if not friendship:
         return 'none', None
-    return friendship.status, friendship
+    elif friendship.status == 'pending' and friendship.user_id == user_id:
+        return 'pending_sent', friendship
+    elif friendship.status == 'pending' and friendship.friend_id == user_id:
+        return 'pending_received', friendship
+    elif friendship.status == 'accepted':
+        return 'accepted', friendship
+    return 'none', None
 
 def get_friends_with_stats(user_id):
     """Hent venner og deres statistik."""
@@ -77,11 +105,16 @@ def get_friends_with_stats(user_id):
         User,
         db.func.sum(BeerLog.count).label('total_beers'),
         db.func.max(BeerLog.timestamp).label('last_beer_time')
-    ).join(User, Friendship.friend_id == User.id) \
+    ).join(User, 
+           db.or_(
+               Friendship.friend_id == User.id, 
+               Friendship.user_id == User.id
+           )) \
      .outerjoin(BeerLog, BeerLog.user_id == User.id) \
      .filter(
-        ((Friendship.user_id == user_id) | (Friendship.friend_id == user_id)) &
-        (Friendship.status == 'accepted')
+        (Friendship.status == 'accepted') &
+        (db.or_(Friendship.user_id == user_id, Friendship.friend_id == user_id)) &
+        (User.id != user_id)  # Ekskluder den loggede bruger
     ).group_by(Friendship.id, User.id).all()
 
     friends_list = []
@@ -177,15 +210,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Slå ændringssporing fr
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')  # Brug miljøvariabel
 app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pictures'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
-app.config['SESSION_COOKIE_SECURE'] = True  # Kun tillad cookies over HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Forhindre JavaScript-adgang til cookies
+#app.config['SESSION_COOKIE_SECURE'] = True  # Kun tillad cookies over HTTPS
+#app.config['SESSION_COOKIE_HTTPONLY'] = True  # Forhindre JavaScript-adgang til cookies
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Beskyt mod CSRF-angreb
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_size': 10,
     'max_overflow': 20,
     'pool_timeout': 30
 }
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # Maks. 2 MB
+app.config['MAX_CONTENT_LENGTH'] = 30 * 1024 * 1024  # Maks. 30 MB
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 db = SQLAlchemy(app)
@@ -212,18 +245,22 @@ class BeerLog(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Tilføjet created_at
 
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
+    username = db.Column(db.String(20), unique=True, nullable=False)
+    password = db.Column(db.String(50), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    allow_location = db.Column(db.Boolean, default=False)  # Tilføjet felt til lokationstilladelse
     beers = db.relationship('BeerLog', backref='user', lazy=True)
     __table_args__ = {'extend_existing': True}
     profile_picture = db.Column(db.String(300), nullable=True)  # Sti til profilbillede
     default_profile_picture = 'static/icon-5355896_640.png'
     last_username_change = db.Column(db.DateTime, nullable=True)  # Add this field
+    bio = db.Column(db.String(500), nullable=True)  # Begræns biografien til 500 tegn
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Tilføjet created_at
     
 class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -247,46 +284,81 @@ class CacheEntry(db.Model):
     key = db.Column(db.String(255), unique=True, nullable=False)
     value = db.Column(db.Text, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
+    
+class VersionLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    version = db.Column(db.String(50), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 csrf = CSRFProtect(app)
 
 ADMIN_USERNAME = os.getenv('ADMIN_USERNAME')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
 
+@app.context_processor
+def inject_logged_in_user():
+    user_id = session.get('user_id')
+    if user_id:
+        return {'logged_in_user': db.session.get(User, user_id)}
+    return {'logged_in_user': None}
+
 @app.before_request
-def check_rate_limit():
+def before_request():
     ip = request.remote_addr
     endpoint = request.endpoint
 
-    if request.method == 'POST' and is_rate_limited(ip, endpoint, limit=5, period=60):
+    # Rate limiting for POST requests
+    if request.method == 'POST' and is_rate_limited(ip, endpoint, limit=10, period=20):
         return "Too many requests. Please try again later.", 429
-def check_cookie_consent():
-    if 'cookie_consent' not in request.cookies and request.endpoint not in ['set_cookie_consent', 'static']:
-        # Brugeren har ikke givet samtykke, vis cookie-banner
-        pass
+
+    # Check for cookie consent
+    cookies_accepted = request.cookies.get('cookie_consent')
+    g.cookies_accepted = cookies_accepted == 'true'
+
+    # Deaktiver ikke-nødvendige funktioner, hvis cookies ikke er accepteret
+    g.analytics_enabled = g.cookies_accepted
+
+    # Undgå omdirigering til /cookie_policy på undtagne sider
+    excluded_endpoints = ['register', 'set_cookie_consent', 'cookie_policy', 'privacy_policy', 'static', 'login']
+    if not cookies_accepted and endpoint not in excluded_endpoints:
+        # Hvis brugeren ikke har givet samtykke, og det ikke er en undtaget side
+        if endpoint == 'index' and 'user_id' not in session:  # Kun hvis brugeren ikke er logget ind
+            return redirect(url_for('register'))
+
+    # Hvis brugeren er logget ind, men ikke findes i databasen, ryd sessionen
+    if 'user_id' in session:
+        user = db.session.get(User, session['user_id'])
+        if not user:
+            session.clear()
+            flash('Din session er udløbet. Log venligst ind igen.', 'warning')
+            return redirect(url_for('login'))
 
 @app.after_request
 def add_security_headers(response):
+    nonce = uuid.uuid4().hex  # Generate a random nonce
     response.headers['Content-Security-Policy'] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline' https://stackpath.bootstrapcdn.com; "
-        "img-src 'self' data:; "
-        "font-src 'self' https://stackpath.bootstrapcdn.com; "
-        "connect-src 'self';"
+        f"default-src 'self'; "
+        f"script-src 'self' 'nonce-{nonce}' https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://stackpath.bootstrapcdn.com; "
+        f"style-src 'self' https://unpkg.com https://stackpath.bootstrapcdn.com 'unsafe-inline'; "
+        f"img-src 'self' data: https://*.tile.openstreetmap.org; "
+        f"font-src 'self' https://stackpath.bootstrapcdn.com; "
+        f"connect-src 'self';"
     )
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.set_cookie('csp_nonce', nonce)  # Pass the nonce to the client via a cookie
     return response
 
 @app.route('/cookie_policy')
 def cookie_policy():
-    return render_template('cookie_policy.html')
+    return render_template('cookie_policy.html', show_navbar=False, show_back_button=False)
 
 @app.route('/privacy_policy')
 def privacy_policy():
-    return render_template('privacy_policy.html')
+    return render_template('privacy_policy.html', show_navbar=False, show_back_button=False)
 
 @app.route('/')
 def index():
@@ -316,7 +388,8 @@ def index():
                 is_admin=user.is_admin,
                 total_beers_ever=total_beers_ever,
                 total_user_and_friends_beers=total_user_and_friends_beers,
-                is_new_user=is_new_user
+                is_new_user=is_new_user,
+                show_back_button=False,
             )
     return redirect(url_for('register'))
 
@@ -324,233 +397,164 @@ def index():
 def upload_profile_picture():
     ip = request.remote_addr
     if is_rate_limited(ip, 'upload_profile_picture', limit=5, period=60):  # Maks. 5 uploadforsøg pr. minut
-        return "Too many upload attempts. Please try again later.", 429
+        flash("For mange uploadforsøg. Prøv igen senere.", "danger")
+        return redirect(url_for('profile', user_id=session.get('user_id')))
 
-    if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
-        if 'profile_picture' not in request.files:
-            return {'status': 'error', 'message': 'Ingen fil valgt.'}, 400
-        
-        file = request.files['profile_picture']
-        if file.filename == '':
-            return {'status': 'error', 'message': 'Ingen fil valgt.'}, 400
-        
-        if file and allowed_file(file):
+    if 'user_id' not in session:
+        flash('Du skal være logget ind for at uploade et profilbillede.', 'danger')
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        flash('Bruger ikke fundet.', 'danger')
+        return redirect(url_for('login'))
+
+    if 'profile_picture' not in request.files:
+        flash('Ingen fil valgt.', 'danger')
+        return redirect(url_for('profile', user_id=user.id))
+
+    file = request.files['profile_picture']
+    if file.filename == '':
+        flash('Ingen fil valgt.', 'danger')
+        return redirect(url_for('profile', user_id=user.id))
+
+    if file and allowed_file(file.filename):
+        try:
+            # Sikr filnavnet
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            
-            try:
-                # Slet det gamle profilbillede, hvis det findes og ikke er standardbilledet
-                if user.profile_picture and user.profile_picture != User.default_profile_picture:
-                    old_filepath = os.path.join(os.getcwd(), user.profile_picture)
-                    if os.path.exists(old_filepath):
-                        os.remove(old_filepath)
-                
-                # Gem den nye fil
-                file.save(filepath)
-                
-                # Komprimer billedet
-                compress_image(filepath, max_size_kb=100)
-                
-                # Opdater brugerens profilbillede i databasen
-                user.profile_picture = os.path.join(app.config['UPLOAD_FOLDER'], filename)  # Gem relativ sti
-                db.session.commit()
-                
-                return {'status': 'success', 'image_url': url_for('static', filename=user.profile_picture)}, 200
-            except Exception as e:
-                return {'status': 'error', 'message': 'Der opstod en fejl under upload af billedet.'}, 500
-        
-        return {'status': 'error', 'message': 'Formatet på billedet understøttes ikke. Kun png, jpg og jpeg understøttes'}, 400
-    return {'status': 'error', 'message': 'Du skal være logget ind for at uploade et billede.'}, 401
 
-@app.route('/send_friend_request/<int:friend_id>', methods=['POST'])
-def send_friend_request(friend_id):
-    ip = request.remote_addr  # Hent IP-adressen for klienten
-    if is_rate_limited(ip, 'send_friend_request', limit=5, period=60):  # Maks. 5 venneanmodninger pr. minut
-        return {'status': 'danger', 'message': 'Too many friend requests. Please try again later.'}, 429
+            # Slet det gamle profilbillede, hvis det findes og ikke er standardbilledet
+            if user.profile_picture and user.profile_picture != User.default_profile_picture:
+                old_filepath = os.path.join(os.getcwd(), user.profile_picture)
+                if os.path.exists(old_filepath):
+                    os.remove(old_filepath)
 
-    if 'user_id' not in session:
-        return {'status': 'danger', 'message': 'Du skal være logget ind for at sende en venneanmodning.'}, 401
+            # Gem den nye fil midlertidigt
+            file.save(filepath)
 
-    user = db.session.get(User, session['user_id'])
-    if not user:
-        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
+            # Reducer billedets dimensioner og komprimer det
+            compress_image(filepath, max_size_kb=500, max_dimensions=(1920, 1080))
 
-    if user.id == friend_id:
-        return {'status': 'danger', 'message': 'Du kan ikke sende en venneanmodning til dig selv.'}, 400
+            # Opdater brugerens profilbillede i databasen
+            relative_path = os.path.relpath(filepath, os.getcwd())  # Gem relativ sti
+            user.profile_picture = relative_path.replace("\\", "/")  # Brug forward slashes for kompatibilitet
+            db.session.commit()
 
-    friend = db.session.get(User, friend_id)
-    if not friend:
-        return {'status': 'warning', 'message': 'Brugeren blev ikke fundet.'}, 404
+            return redirect(url_for('profile', user_id=user.id))
+        except Exception as e:
+            app.logger.error(f"Fejl under upload af profilbillede: {e}")
+            flash('Der opstod en fejl under upload af billedet. Prøv igen.', 'danger')
+            return redirect(url_for('profile', user_id=user.id))
 
-    existing_request = Friendship.query.filter_by(user_id=user.id, friend_id=friend.id).first()
-    if existing_request:
-        if existing_request.status == 'pending':
-            return {'status': 'info', 'message': 'Du har allerede sendt en venneanmodning.'}, 200
-        elif existing_request.status == 'accepted':
-            return {'status': 'info', 'message': 'I er allerede venner.'}, 200
-
-    try:
-        friendship = Friendship(user_id=user.id, friend_id=friend.id, status='pending')
-        db.session.add(friendship)
-        db.session.commit()
-        return {'status': 'success', 'new_status': 'pending_sent'}, 201
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Fejl under oprettelse af venneanmodning: {e}")
-        return {'status': 'danger', 'message': 'Der opstod en fejl under oprettelsen af venneanmodningen.'}, 500
-    
-@app.route('/accept_friend_request/<int:friendship_id>', methods=['POST'])
-def accept_friend_request(friendship_id):
-    ip = request.remote_addr  # Hent IP-adressen for klienten
-    if is_rate_limited(ip, 'accept_friend_request', limit=5, period=60):  # Maks. 5 anmodninger pr. minut
-        return {'status': 'danger', 'message': 'Too many friend request acceptances. Please try again later.'}, 429
-
-    app.logger.info(f"Forsøger at acceptere venneanmodning med ID: {friendship_id}")
-
-    if 'user_id' not in session:
-        return {'status': 'danger', 'message': 'Du skal være logget ind for at acceptere en venneanmodning.'}, 401
-
-    friendship = Friendship.query.get(friendship_id)
-    if not friendship:
-        app.logger.warning(f"Venneanmodning med ID {friendship_id} blev ikke fundet.")
-        return {'status': 'danger', 'message': 'Venneanmodningen blev ikke fundet.'}, 404
-
-    if friendship.friend_id != session['user_id']:
-        app.logger.warning(f"Bruger har ikke tilladelse til at acceptere venneanmodning med ID {friendship_id}.")
-        return {'status': 'danger', 'message': 'Du har ikke tilladelse til at acceptere denne venneanmodning.'}, 403
-
-    try:
-        friendship.status = 'accepted'
-        db.session.commit()
-        app.logger.info(f"Venneanmodning med ID {friendship_id} blev accepteret.")
-        return {'status': 'success', 'new_status': 'remove_friend', 'message': 'Venneanmodning accepteret.'}, 200
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Fejl under accept af venneanmodning: {e}")
-        return {'status': 'danger', 'message': 'Der opstod en fejl under accept af venneanmodningen.'}, 500
-    
-@app.route('/reject_friend_request/<int:friendship_id>', methods=['POST'])
-def reject_friend_request(friendship_id):
-    ip = request.remote_addr  # Hent IP-adressen for klienten
-    if is_rate_limited(ip, 'reject_friend_request', limit=5, period=60):  # Maks. 5 anmodninger pr. minut
-        return {'status': 'danger', 'message': 'Too many friend request rejections. Please try again later.'}, 429
-
-    app.logger.info(f"Forsøger at afvise venneanmodning med ID: {friendship_id}")
-
-    if 'user_id' not in session:
-        return {'status': 'danger', 'message': 'Du skal være logget ind for at afvise en venneanmodning.'}, 401
-
-    friendship = Friendship.query.get(friendship_id)
-    if not friendship:
-        app.logger.warning(f"Venneanmodning med ID {friendship_id} blev ikke fundet.")
-        return {'status': 'danger', 'message': 'Venneanmodningen blev ikke fundet.'}, 404
-
-    if friendship.friend_id != session['user_id']:
-        app.logger.warning(f"Bruger har ikke tilladelse til at afvise venneanmodning med ID {friendship_id}.")
-        return {'status': 'danger', 'message': 'Du har ikke tilladelse til at afvise denne venneanmodning.'}, 403
-
-    try:
-        db.session.delete(friendship)
-        db.session.commit()
-        app.logger.info(f"Venneanmodning med ID {friendship_id} blev afvist.")
-        return {'status': 'success', 'new_status': 'none', 'message': 'Venneanmodning afvist.'}, 200
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Fejl under afvisning af venneanmodning: {e}")
-        return {'status': 'danger', 'message': 'Der opstod en fejl under afvisning af venneanmodningen.'}, 500
-    
-@app.route('/cancel_friend_request/<int:friend_id>', methods=['POST'])
-def cancel_friend_request(friend_id):
-    ip = request.remote_addr  # Hent IP-adressen for klienten
-    if is_rate_limited(ip, 'cancel_friend_request', limit=5, period=60):  # Maks. 5 anmodninger pr. minut
-        return {'status': 'danger', 'message': 'Too many friend request cancellations. Please try again later.'}, 429
-
-    if 'user_id' not in session:
-        return {'status': 'danger', 'message': 'Du skal være logget ind for at annullere en venneanmodning.'}, 401
-
-    user = db.session.get(User, session['user_id'])
-    if not user:
-        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
-
-    friendship = Friendship.query.filter_by(user_id=user.id, friend_id=friend_id, status='pending').first()
-    if not friendship:
-        return {'status': 'warning', 'message': 'Ingen venneanmodning blev fundet.'}, 404
-
-    try:
-        db.session.delete(friendship)
-        db.session.commit()
-        return {'status': 'success', 'new_status': 'none'}, 200
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Fejl under annullering af venneanmodning: {e}")
-        return {'status': 'danger', 'message': 'Der opstod en fejl under annulleringen af venneanmodningen.'}, 500
+    flash('Formatet på billedet understøttes ikke. Kun PNG, JPG, JPEG og GIF understøttes.', 'danger')
+    return redirect(url_for('profile', user_id=user.id))
 
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
     ip = request.remote_addr  # Hent IP-adressen for klienten
-    if is_rate_limited(ip, 'admin_login', limit=5, period=60):  # Maks. 5 loginforsøg pr. minut
+
+    # Rate limiting kun for POST-anmodninger (loginforsøg)
+    if request.method == 'POST' and is_rate_limited(ip, 'admin_login', limit=3, period=20):
         return "Too many login attempts. Please try again later.", 429
 
     if request.method == 'POST':
-        admin_username = request.form['username']
-        admin_password = request.form['password']
+        admin_username = request.form.get('username')
+        admin_password = request.form.get('password')
 
-        # Hardkodede admin-oplysninger (kan flyttes til miljøvariabler for sikkerhed)
+        # Valider input
+        if not admin_username or not admin_password:
+            flash('Udfyld både brugernavn og adgangskode.', 'danger')
+            return redirect(url_for('admin_login'))
+
+        # Sammenlign med miljøvariabler
         if admin_username == ADMIN_USERNAME and admin_password == ADMIN_PASSWORD:
             session['is_admin'] = True  # Sæt admin-session
             return redirect(url_for('admin'))
         else:
-            flash('Invalid admin credentials.', 'danger')
+            flash('Forkert brugernavn eller adgangskode.', 'danger')
+
+    # GET-anmodning: Vis login-siden
     return render_template('admin_login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     ip = request.remote_addr
+    error_message = None
 
-    # Begræns kun POST-anmodninger
-    if request.method == 'POST' and is_rate_limited(ip, 'register', limit=2, period=10):  # Maks. 2 registreringsforsøg pr. 10 sekunder
-        return "Too many registration attempts. Please try again later.", 429
+    if request.method == 'POST' and is_rate_limited(ip, 'register', limit=2, period=10):
+        error_message = "For mange registreringsforsøg. Prøv igen senere."
+        return render_template('register.html', error_message=error_message)
 
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username')
+        password = request.form.get('password')
+        confirm_age = request.form.get('confirm_age')
+        accept_terms = request.form.get('accept_terms')
+        accept_privacy_policy = request.form.get('accept_privacy_policy')
+        allow_location = request.form.get('allow_location')
 
-        # Tjek om brugernavnet allerede er taget
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            flash('Brugernavnet er allerede taget. Vælg venligst et andet.')
-            return redirect(url_for('register'))
+        # Valider obligatoriske felter
+        if not confirm_age:
+            error_message = "Du skal bekræfte, at du er over 18 år."
+        elif not accept_terms:
+            error_message = "Du skal acceptere brugervilkårene."
+        elif not accept_privacy_policy:
+            error_message = "Du skal acceptere privatlivspolitikken."
+        elif not username or not password:
+            error_message = "Brugernavn og adgangskode skal udfyldes."
+        elif len(username) > 20:  # Tjek længden af brugernavnet
+            error_message = "Brugernavnet må ikke være længere end 20 tegn."
+        else:
+            # Tjek om brugernavnet allerede er taget (case-insensitive)
+            existing_user = User.query.filter(User.username.ilike(username)).first()
+            if existing_user:
+                error_message = "Brugernavnet er allerede taget. Vælg venligst et andet."
+            else:
+                try:
+                    # Opret ny bruger
+                    new_user = User(
+                        username=username,  # Gem brugernavnet som det er
+                        password=generate_password_hash(password, method='pbkdf2:sha256'),
+                        allow_location=(allow_location == 'on')
+                    )
+                    db.session.add(new_user)
+                    db.session.commit()
 
-        # Opret ny bruger
-        new_user = User(username=username, password=generate_password_hash(password, method='pbkdf2:sha256'))
-        db.session.add(new_user)
-        db.session.commit()
+                    # Log brugeren ind
+                    session['user_id'] = new_user.id
+                    return redirect(url_for('index'))
+                except Exception as e:
+                    db.session.rollback()
+                    app.logger.error(f"Fejl under registrering: {e}")
+                    error_message = "Der opstod en fejl under registreringen. Prøv igen."
 
-        # Log brugeren ind
-        session['user_id'] = new_user.id
-        return redirect(url_for('index'))
-
-    # GET-anmodning: Vis registreringssiden
-    return render_template('register.html', show_navbar=False)
+    return render_template('register.html', error_message=error_message, show_navbar=False, show_back_button=False)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     ip = request.remote_addr
-    if is_rate_limited(ip, 'login', limit=5, period=60):  # Maks. 5 loginforsøg pr. minut
-        return "Too many login attempts. Please try again later.", 429
+    error_message = None
 
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-        user = User.query.filter_by(username=username).first()
-        if user and check_password_hash(user.password, password):
-            session['user_id'] = user.id
-            return redirect(url_for('index'))
+        if username and password:
+            if is_rate_limited(ip, 'login', limit=5, period=20):
+                error_message = "For mange loginforsøg. Prøv igen senere."
+            else:
+                # Find brugeren med case-insensitive søgning
+                user = User.query.filter(User.username.ilike(username)).first()
+                if user and check_password_hash(user.password, password):
+                    session['user_id'] = user.id
+                    return redirect(url_for('index'))
+                else:
+                    error_message = "Brugernavnet findes ikke eller adgangskoden er forkert."
         else:
-            flash('Brugernavnet findes ikke eller adgangskoden er forkert.', 'danger')
-    return render_template('login.html')
+            error_message = "Udfyld både brugernavn og adgangskode."
+
+    return render_template('login.html', show_navbar=False, show_back_button=False, error_message=error_message)
 
 @app.route('/logout')
 def logout():
@@ -580,28 +584,68 @@ def add_beer():
             db.session.commit()
     return redirect(url_for('index'))
 
-@app.route('/profile', methods=['GET', 'POST'])
-def profile():
-    user, redirect_response = get_logged_in_user()
-    if redirect_response:
-        return redirect_response
+@app.route('/profile/<int:user_id>', methods=['GET', 'POST'])
+def profile(user_id):
+    # Hent den loggede bruger
+    logged_in_user = db.session.get(User, session.get('user_id'))
+    if not logged_in_user:
+        flash('Du skal være logget ind for at se profiler.', 'danger')
+        return redirect(url_for('login'))
 
-    total_beers, last_beer_time = get_user_stats(user)
-
+    # Hent den ønskede bruger
+    user = db.session.get(User, user_id)
+    if not user:
+        flash('Brugeren blev ikke fundet.', 'warning')
+        return redirect(url_for('index'))
+    
     # Beregn cooldown for brugernavnsskift
     cooldown_message = None
-    if user.last_username_change:
+    if user.id == logged_in_user.id and user.last_username_change:
         cooldown_end = user.last_username_change + timedelta(days=7)
         if datetime.utcnow() < cooldown_end:
             remaining_time = cooldown_end - datetime.utcnow()
-            cooldown_message = f"Du kan skifte dit brugernavn igen om {remaining_time.days} dage og {remaining_time.seconds // 3600} timer."
+            days = remaining_time.days
+            hours = remaining_time.seconds // 3600
+            cooldown_message = f"Du kan skifte dit brugernavn igen om {days} dage og {hours} timer."
+
+    # Hvis det er brugerens egen profil, tillad ændringer
+    is_own_profile = logged_in_user.id == user.id
+
+    # Håndter ændring af brugernavn
+    if request.method == 'POST' and is_own_profile:
+        new_username = request.form.get('new_username')
+        if new_username:
+            # Tjek om brugernavnet allerede er taget
+            existing_user = User.query.filter_by(username=new_username).first()
+            if existing_user:
+                flash('Brugernavnet er allerede taget. Vælg venligst et andet.', 'danger')
+            else:
+                user.username = new_username
+                user.last_username_change = datetime.utcnow()
+                db.session.commit()
+                flash('Dit brugernavn er blevet opdateret!', 'success')
+                return redirect(url_for('profile', user_id=user.id))
+
+    # Beregn statistik for den viste bruger
+    total_beers = sum(beer.count for beer in user.beers) if user.beers else 0
+    last_beer_time = user.beers[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S') if user.beers else None
+
+    # Hent venskabsstatus, hvis det ikke er brugerens egen profil
+    status, friendship = None, None
+    if not is_own_profile:
+        status, friendship = get_friendship_status(logged_in_user.id, user.id)
 
     return render_template(
         'profile.html',
         user=user,
+        logged_in_user=logged_in_user,
+        is_own_profile=is_own_profile,
+        status=status,
+        friendship_id=friendship.id if friendship else None,
+        friendship_created_at=friendship.created_at if friendship and friendship.status == 'accepted' else None,
         total_beers=total_beers,
         last_beer_time=last_beer_time,
-        cooldown_message=cooldown_message
+        cooldown_message=cooldown_message  # Send cooldown-besked til skabelonen
     )
 
 @app.route('/delete_account', methods=['GET', 'POST'])
@@ -651,31 +695,35 @@ def admin():
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
     ip = request.remote_addr
-    if is_rate_limited(ip, 'delete_user', limit=5, period=60):  # Maks. 5 sletninger pr. minut
+    if is_rate_limited(ip, 'delete_user', limit=2, period=1):  # Maks. 2 sletninger pr. sekund
         return "Too many user deletions. Please try again later.", 429
+
     if session.get('is_admin'):  # Check if the user is an admin
+        # Tjek om bekræftelse er givet
+        confirm_delete = request.form.get('confirm_delete')
+        if not confirm_delete or confirm_delete != 'CONFIRM':
+            flash('Du skal bekræfte, at du vil slette brugeren ved at skrive "CONFIRM".', 'danger')
+            return redirect(url_for('admin'))
+
         user = db.session.get(User, user_id)
-        if user:  # Ensure the user exists
+        if user:
             try:
-                # Delete the user's profile picture if it exists and is not the default
+                # Slet profilbilledet
                 if user.profile_picture and user.profile_picture != User.default_profile_picture:
                     profile_picture_path = os.path.join(os.getcwd(), user.profile_picture)
                     if os.path.exists(profile_picture_path):
                         os.remove(profile_picture_path)
 
-                # Delete all BeerLog entries for the user
+                # Slet relaterede data
                 BeerLog.query.filter_by(user_id=user.id).delete()
-
-                # Delete all friendships involving the user
                 Friendship.query.filter(
                     (Friendship.user_id == user.id) | (Friendship.friend_id == user.id)
                 ).delete()
 
-                # Delete the user
+                # Slet brugeren
                 db.session.delete(user)
                 db.session.commit()
-
-                flash(f'Brugeren "{user.username}" blev slettet.', 'success')
+                flash('Brugeren blev slettet.', 'success')
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Fejl ved sletning af bruger {user_id}: {e}")
@@ -689,17 +737,32 @@ def delete_user(user_id):
 @app.route('/delete_all_users', methods=['POST'])
 def delete_all_users():
     ip = request.remote_addr
-    if is_rate_limited(ip, 'delete_all_users', limit=1, period=3600):  # Maks. 1 sletning pr. time
+    if is_rate_limited(ip, 'delete_all_users', limit=2, period=600):  
         return "Too many requests. Please try again later.", 429
+
     if session.get('is_admin'):  # Ensure only admins can delete all users
+        # Tjek om bekræftelse er givet
+        confirm_delete = request.form.get('confirm_delete')
+        if not confirm_delete or confirm_delete != 'CONFIRM':
+            flash('Du skal bekræfte, at du vil slette alle brugere ved at skrive "CONFIRM".', 'danger')
+            return redirect(url_for('admin'))
+
         try:
-            # Delete all BeerLogs
+            # Slet profilbilleder
+            users = User.query.all()
+            for user in users:
+                if user.profile_picture and user.profile_picture != User.default_profile_picture:
+                    profile_picture_path = os.path.join(os.getcwd(), user.profile_picture)
+                    if os.path.exists(profile_picture_path):
+                        os.remove(profile_picture_path)
+
+            # Slet relaterede data
             BeerLog.query.delete()
-
-            # Delete all Friendships
             Friendship.query.delete()
+            CacheEntry.query.delete()
+            RateLimit.query.delete()
 
-            # Delete all Users
+            # Slet alle brugere
             User.query.delete()
 
             db.session.commit()
@@ -713,10 +776,9 @@ def delete_all_users():
     return redirect(url_for('admin'))
 
 @app.route('/friends', methods=['GET', 'POST'])
-@cache.cached(timeout=300)  # Cache i 5 minutter
 def friends():
     ip = request.remote_addr
-    if request.method == 'POST' and is_rate_limited(ip, 'friends', limit=10, period=60):  # Maks. 10 anmodninger pr. minut
+    if request.method == 'POST' and is_rate_limited(ip, 'friends', limit=3, period=5):
         return "Too many requests. Please try again later.", 429
     user, redirect_response = get_logged_in_user()
     if redirect_response:
@@ -730,7 +792,7 @@ def friends():
     for friendship in Friendship.query.filter_by(friend_id=user.id, status='pending').all():
         requester = friendship.user
         friend_requests.append({
-            'id': friendship.id,
+            'id': requester.id,  # Brug brugerens ID i stedet for friendship.id
             'username': requester.username,
             'profile_picture': requester.profile_picture or User.default_profile_picture
         })
@@ -738,7 +800,7 @@ def friends():
     # Håndter søgefunktionalitet
     search_results = []
     if request.method == 'POST':
-        search_username = request.form['username']
+        search_username = request.form['search_username']
         search_results_query = User.query.filter(
             User.username.ilike(f'%{search_username}%'),
             User.id != user.id  # Ekskluder den loggede bruger
@@ -761,106 +823,107 @@ def friends():
         search_results=search_results
     )
 
-@app.route('/add_friend/<int:friend_id>', methods=['POST'])
-def add_friend(friend_id):
+@app.route('/friend_action', methods=['POST'])
+def friend_action():
     ip = request.remote_addr  # Hent IP-adressen for klienten
-    if is_rate_limited(ip, 'add_friend', limit=5, period=60):  # Maks. 5 venneanmodninger pr. minut
-        return {'status': 'danger', 'message': 'Too many friend requests. Please try again later.'}, 429
+    if is_rate_limited(ip, 'friend_action', limit=5, period=20):  # Maks. 5 anmodninger pr. minut
+        return jsonify({'status': 'error', 'message': 'For mange anmodninger. Prøv igen senere.'}), 429
 
     if 'user_id' not in session:
-        return {'status': 'danger', 'message': 'Du skal være logget ind for at tilføje venner.'}, 401
+        return jsonify({'status': 'error', 'message': 'Du skal være logget ind for at udføre denne handling.'}), 401
 
-    user = db.session.get(User, session['user_id'])
-    if not user:
-        return {'status': 'danger', 'message': 'Brugeren blev ikke fundet.'}, 404
-
-    if user.id == friend_id:
-        return {'status': 'danger', 'message': 'Du kan ikke tilføje dig selv som ven.'}, 400
-
-    friend = db.session.get(User, friend_id)
-    if not friend:
-        return {'status': 'warning', 'message': 'Brugeren blev ikke fundet.'}, 404
-
-    # Tjek om venskabet allerede eksisterer
-    existing_friendship = Friendship.query.filter_by(user_id=user.id, friend_id=friend.id).first()
-    if existing_friendship:
-        return {
-            'status': 'info',
-            'message': f'{friend.username} er allerede din ven.',
-            'friend': {
-                'id': friend.id,
-                'username': friend.username,
-                'profile_picture': friend.profile_picture or User.default_profile_picture,
-                'total_beers': sum(beer.count for beer in friend.beers),
-                'last_beer_time': friend.beers[-1].timestamp.strftime('%d-%m-%Y %H:%M') if friend.beers else None,
-                'created_at': existing_friendship.created_at.strftime('%d-%m-%Y')  # Tilføj dato for venskab
-            }
-        }, 200
-
-    # Opret venskab
-    try:
-        friendship = Friendship(user_id=user.id, friend_id=friend.id, created_at=datetime.utcnow())
-        db.session.add(friendship)
-        db.session.commit()
-
-        return {
-            'status': 'success',
-            'message': f'{friend.username} er blevet tilføjet som ven!',
-            'friend': {
-                'id': friend.id,
-                'username': friend.username,
-                'profile_picture': friend.profile_picture or User.default_profile_picture,
-                'total_beers': sum(beer.count for beer in friend.beers),
-                'last_beer_time': friend.beers[-1].timestamp.strftime('%d-%m-%Y %H:%M') if friend.beers else None,
-                'created_at': friendship.created_at.strftime('%d-%m-%Y')  # Tilføj dato for venskab
-            }
-        }, 201
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Fejl under tilføjelse af ven: {e}")
-        return {'status': 'danger', 'message': 'Der opstod en fejl under tilføjelsen af vennen.'}, 500
-
-@app.route('/remove_friend/<int:friendship_id>', methods=['POST'])
-def remove_friend(friendship_id):
-    ip = request.remote_addr  # Hent IP-adressen for klienten
-    if is_rate_limited(ip, 'remove_friend', limit=5, period=60):  # Maks. 5 anmodninger pr. minut
-        return {'status': 'danger', 'message': 'Too many friend removal requests. Please try again later.'}, 429
-
-    app.logger.info(f"Anmodning om at fjerne ven med ID: {friendship_id}")
-
-    if 'user_id' not in session:
-        app.logger.warning("Bruger ikke logget ind.")
-        return {'status': 'danger', 'message': 'Du skal være logget ind for at fjerne en ven.'}, 401
-
+    data = request.get_json()
+    action = data.get('action')
     user_id = session['user_id']
-    app.logger.info(f"Bruger ID: {user_id}")
-
-    # Tjek om venskabet findes
-    friendship = Friendship.query.get(friendship_id)
-
-    if not friendship:
-        app.logger.warning(f"Venskabet med ID {friendship_id} blev ikke fundet.")
-        return {'status': 'warning', 'message': 'Venskabet findes ikke.'}, 404
-
-    # Tjek om brugeren har tilladelse til at fjerne venskabet
-    if friendship.user_id != user_id and friendship.friend_id != user_id:
-        app.logger.warning(f"Bruger {user_id} har ikke tilladelse til at fjerne venskabet med ID {friendship_id}.")
-        return {'status': 'danger', 'message': 'Du har ikke tilladelse til at fjerne dette venskab.'}, 403
+    target_user_id = data.get('user_id')
+    friendship_id = data.get('friendship_id')
 
     try:
-        # Log hvem der fjernes som ven
-        friend_user_id = friendship.friend_id if friendship.user_id == user_id else friendship.user_id
-        friend_user = db.session.get(User, friend_user_id)
-        friend_username = friend_user.username if friend_user else "Ukendt bruger"
+        if action == 'send_request':
+            # Logik for at sende venneanmodning
+            friend = db.session.get(User, target_user_id)
+            if not friend:
+                return jsonify({'status': 'error', 'message': 'Brugeren blev ikke fundet.'}), 404
 
-        db.session.delete(friendship)
-        db.session.commit()
-        app.logger.info(f"Venskabet med ID {friendship_id} mellem bruger {user_id} og {friend_user_id} blev fjernet.")
-        return {'status': 'success', 'message': f'Vennen "{friend_username}" blev fjernet.'}, 200
+            if user_id == target_user_id:
+                return jsonify({'status': 'error', 'message': 'Du kan ikke sende en venneanmodning til dig selv.'}), 400
+
+            existing_request = Friendship.query.filter_by(user_id=user_id, friend_id=target_user_id).first()
+            if existing_request:
+                return jsonify({'status': 'info', 'message': 'Du har allerede sendt en venneanmodning.'}), 200
+
+            friendship = Friendship(user_id=user_id, friend_id=target_user_id, status='pending')
+            db.session.add(friendship)
+            db.session.commit()
+            return jsonify({'status': 'success', 'message': 'Venneanmodning sendt.', 'new_status': 'pending_sent'}), 201
+
+        elif action == 'cancel_request':
+            # Logik for at annullere venneanmodning
+            friendship = Friendship.query.filter_by(user_id=user_id, friend_id=target_user_id, status='pending').first()
+            if not friendship:
+                return jsonify({'status': 'error', 'message': 'Ingen venneanmodning blev fundet.'}), 404
+
+            db.session.delete(friendship)
+            db.session.commit()
+            return jsonify({'status': 'success', 'message': 'Venneanmodning annulleret.', 'new_status': 'none'}), 200
+
+        elif action == 'accept_request':
+        # Logik for at acceptere venneanmodning
+            friendship = Friendship.query.get(friendship_id)
+            if not friendship:
+                return jsonify({'status': 'error', 'message': 'Venneanmodningen blev ikke fundet.'}), 404
+
+        # Sørg for, at den loggede bruger er modtageren af venneanmodningen
+            if friendship.friend_id != user_id:
+                return jsonify({'status': 'error', 'message': 'Du har ikke tilladelse til at acceptere denne venneanmodning.'}), 403
+
+        # Sørg for, at brugeren ikke bliver venner med sig selv
+            if friendship.user_id == friendship.friend_id:
+                return jsonify({'status': 'error', 'message': 'Ugyldig venneanmodning: Brugeren kan ikke være venner med sig selv.'}), 400
+
+        # Opdater status til 'accepted'
+            friendship.status = 'accepted'
+            db.session.commit()
+
+            return jsonify({
+                'status': 'success',
+                'new_status': 'accepted',
+                'friendship_created_at': friendship.created_at.strftime('%d. %B %Y')
+            }), 200
+
+        elif action == 'reject_request':
+        # Logik for at afvise venneanmodning
+                friendship = Friendship.query.get(friendship_id)
+                if not friendship:
+                    return jsonify({'status': 'error', 'message': 'Venneanmodningen blev ikke fundet.'}), 404
+
+        # Sørg for, at den loggede bruger er modtageren af venneanmodningen
+                if friendship.friend_id != user_id:
+                    return jsonify({'status': 'error', 'message': 'Du har ikke tilladelse til at afvise denne venneanmodning.'}), 403
+
+        # Slet venneanmodningen
+                db.session.delete(friendship)
+                db.session.commit()
+
+                return jsonify({'status': 'success', 'new_status': 'none'}), 200
+
+        elif action == 'remove_friend':
+            # Logik for at fjerne ven
+            friendship = Friendship.query.get(friendship_id)
+            if not friendship or (friendship.user_id != user_id and friendship.friend_id != user_id):
+                return jsonify({'status': 'error', 'message': 'Venskabet blev ikke fundet eller er ugyldigt.'}), 404
+
+            db.session.delete(friendship)
+            db.session.commit()
+            return jsonify({'status': 'success', 'message': 'Ven fjernet.', 'new_status': 'none'}), 200
+
+        else:
+            return jsonify({'status': 'error', 'message': 'Ugyldig handling.'}), 400
+
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Fejl under fjernelse af ven med ID {friendship_id}: {e}")
-        return {'status': 'danger', 'message': 'Der opstod en fejl under fjernelsen af vennen.'}, 500
+        app.logger.error(f"Fejl under vennehandling: {e}")
+        return jsonify({'status': 'error', 'message': 'Der opstod en fejl. Prøv igen senere.'}), 500
 
 @app.route('/delete_beer', methods=['POST'])
 def delete_beer():
@@ -883,55 +946,45 @@ def map():
     ip = request.remote_addr
     if is_rate_limited(ip, 'map', limit=5, period=60):  # Maks. 5 anmodninger pr. minut
         return "Too many requests. Please try again later.", 429
+
     if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
-        if user:
-            # Hent alle logs én gang
-            all_logs = BeerLog.query.all()
+        try:
+            user = db.session.get(User, session['user_id'])
+            if user:
+                # Hent logs
+                all_logs = BeerLog.query.all()
+                user_logs = BeerLog.query.filter_by(user_id=user.id).all()
+                friend_ids = [friendship.friend.id for friendship in user.friendships]
+                friends_logs = BeerLog.query.filter(BeerLog.user_id.in_(friend_ids)).all()
 
-            # Filtrer brugerens egne logs
-            user_logs = [log for log in all_logs if log.user_id == user.id]
+                # Serialiser logs
+                def serialize_logs(logs):
+                    return [
+                        {
+                            'latitude': log.latitude,
+                            'longitude': log.longitude,
+                            'count': log.count,
+                            'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        for log in logs if log.latitude and log.longitude
+                    ]
 
-            # Filtrer logs for brugerens venner
-            friends = [friendship.friend for friendship in user.friendships]
-            friends_logs = [log for log in all_logs if log.user_id in [friend.id for friend in friends]]
+                user_logs_serializable = serialize_logs(user_logs)
+                friends_logs_serializable = serialize_logs(friends_logs)
+                all_logs_serializable = serialize_logs(all_logs)
 
-            # Serialiser logs
-            user_logs_serializable = [
-                {
-                    'latitude': log.latitude,
-                    'longitude': log.longitude,
-                    'count': log.count,
-                    'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                } for log in user_logs if log.latitude and log.longitude
-            ]
+                return render_template(
+                    'map.html',
+                    user=user,
+                    user_logs=user_logs_serializable,
+                    friends_logs=friends_logs_serializable,
+                    all_logs=all_logs_serializable
+                )
+        except Exception as e:
+            app.logger.error(f"Fejl under hentning af kortdata: {e}")
+            flash('Der opstod en fejl under hentning af kortdata.', 'danger')
+            return redirect(url_for('index'))
 
-            friends_logs_serializable = [
-                {
-                    'latitude': log.latitude,
-                    'longitude': log.longitude,
-                    'count': log.count,
-                    'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                } for log in friends_logs if log.latitude and log.longitude
-            ]
-
-            all_logs_serializable = [
-                {
-                    'latitude': log.latitude,
-                    'longitude': log.longitude,
-                    'count': log.count,
-                    'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-                } for log in all_logs if log.latitude and log.longitude
-            ]
-
-            # Pass the user object to the template
-            return render_template(
-                'map.html',
-                user=user,  # Pass the user object
-                user_logs=user_logs_serializable,
-                friends_logs=friends_logs_serializable,
-                all_logs=all_logs_serializable
-            )
     flash('Du skal være logget ind for at se kortet.', 'danger')
     return redirect(url_for('login'))
 
@@ -941,11 +994,17 @@ def set_cookie_consent():
     response.set_cookie('cookie_consent', 'true', max_age=365*24*60*60)  # 1 år
     return response
 
-@app.route('/settings')
+@app.route('/settings', methods=['GET', 'POST'])
 def settings():
     user, redirect_response = get_logged_in_user()
     if redirect_response:
         return redirect_response
+
+    if request.method == 'POST':
+        # Opdater lokationstilladelse
+        allow_location = request.form.get('allow_location') == 'on'
+        user.allow_location = allow_location
+        db.session.commit()
 
     return render_template('settings.html', user=user)
 
@@ -954,18 +1013,20 @@ def leaderboard():
     ip = request.remote_addr
     if is_rate_limited(ip, 'leaderboard', limit=5, period=60):  # Maks. 5 anmodninger pr. minut
         return "Too many requests. Please try again later.", 429
+
     cache_key = 'leaderboard'
     cached_data = get_cache(cache_key)
     if cached_data:
         return cached_data
 
-    # Generer leaderboard-data
+    # Hent den loggede bruger
     user, redirect_response = get_logged_in_user()
     if redirect_response:
         return redirect_response
 
     total_users = User.query.count()
 
+    # Generer leaderboard-sektioner
     leaderboard_sections = [
         ("Inden for de sidste 24 timer", get_leaderboard_data(user.id, timedelta(days=1))),
         ("Inden for den sidste uge", get_leaderboard_data(user.id, timedelta(weeks=1))),
@@ -974,6 +1035,14 @@ def leaderboard():
         ("Flest øl drukket nogensinde", get_leaderboard_data(user.id))
     ]
 
+    # Tilføj venskabsstatus og friendship_id for hver bruger
+    for section_title, users in leaderboard_sections:
+        for u in users:
+            status, friendship = get_friendship_status(user.id, u['id'])
+            u['status'] = status
+            u['friendship_id'] = friendship.id if friendship else None
+
+    # Render leaderboardet
     rendered_data = render_template(
         'leaderboard.html',
         user=user,
@@ -981,7 +1050,8 @@ def leaderboard():
         leaderboard_sections=leaderboard_sections
     )
 
-    set_cache(cache_key, rendered_data, timeout=300)  # Cache i 5 minutter
+    # Cache resultatet i 5 minutter
+    set_cache(cache_key, rendered_data, timeout=300)
     return rendered_data
     
 @app.route('/change_username', methods=['POST'])
@@ -998,18 +1068,18 @@ def change_username():
     confirm_change = request.form.get('confirm_change')  # Check for confirmation
     if not new_username:
         flash('Brugernavn må ikke være tomt.', 'danger')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile', user_id=session['user_id']))
 
     user = db.session.get(User, session['user_id'])
     if not user:
         flash('Bruger ikke fundet.', 'danger')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile', user_id=session['user_id']))
 
     # Check if the username is already taken
     existing_user = User.query.filter_by(username=new_username).first()
     if existing_user:
         flash('Brugernavnet er allerede taget. Vælg venligst et andet.', 'danger')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile', user_id=session['user_id']))
 
     # Check for cooldown
     if user.last_username_change:
@@ -1020,20 +1090,18 @@ def change_username():
                 f'Du kan skifte dit brugernavn igen om {remaining_time.days} dage og {remaining_time.seconds // 3600} timer.',
                 'danger'
             )
-            return redirect(url_for('profile'))
+            return redirect(url_for('profile', user_id=session['user_id']))
 
     # If confirmation is not provided, show the warning
     if not confirm_change:
-        flash('Er du sikker på at du vil ændre dit navn? Der vil gå 7 dage før du kan ændre det igen.', 'warning')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile', user_id=session['user_id']))
 
     # Update the username and last_username_change timestamp
     user.username = new_username
     user.last_username_change = datetime.utcnow()
     db.session.commit()
 
-    flash('Dit brugernavn er blevet opdateret!', 'success')
-    return redirect(url_for('profile'))
+    return redirect(url_for('profile', user_id=session['user_id']))
     
 @app.route('/about')
 def about():
@@ -1047,6 +1115,38 @@ def about():
         return redirect(url_for('login'))
 
     return render_template('about.html', user=user)
+
+@app.route('/credits')
+def credits():
+    return render_template('credits.html', show_navbar=False, show_back_button=False)
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html', show_navbar=False, show_back_button=False)
+
+@app.route('/update_bio', methods=['POST'])
+
+def update_bio():
+    if 'user_id' not in session:
+        flash('Du skal være logget ind for at opdatere din biografi.', 'danger')
+        return redirect(url_for('login'))
+
+    user = db.session.get(User, session['user_id'])
+    if not user:
+        flash('Bruger ikke fundet.', 'danger')
+        return redirect(url_for('index'))
+
+    bio = request.form.get('bio')
+    if bio:
+        if len(bio) > 500:  # Maksimal længde på 500 tegn
+            flash('Din biografi må ikke være længere end 500 tegn.', 'danger')
+            return redirect(url_for('profile', user_id=user.id))
+        user.bio = bio
+        db.session.commit()
+    else:
+        flash('Du skal angive en gyldig biografi.', 'danger')
+
+    return redirect(url_for('profile', user_id=user.id))
 
 @app.route('/which_beer')
 def which_beer():
@@ -1063,6 +1163,27 @@ def which_beer():
         return redirect(url_for('login'))
 
     return render_template('which_beer.html', user=user)
+
+@app.route('/versions')
+def versions():
+    version_logs = VersionLog.query.order_by(VersionLog.created_at.desc()).all()
+    return render_template('versions.html', version_logs=version_logs, show_navbar=False, show_back_button=False)
+
+@app.route('/log_version', methods=['POST'])
+def log_version():
+    version = request.form.get('version')
+    description = request.form.get('description')
+
+    if not version or not description:
+        flash('Både version og beskrivelse skal udfyldes.', 'danger')
+        return redirect(url_for('admin'))
+
+    new_version = VersionLog(version=version, description=description)
+    db.session.add(new_version)
+    db.session.commit()
+
+    flash('Ny version logget!', 'success')
+    return redirect(url_for('admin'))
 
 if __name__ == '__main__':
     app.run()

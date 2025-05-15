@@ -63,56 +63,6 @@ body.dag-theme {
     color: #212529; /* Mørk tekst */
 }
 
-/* Popup baggrund */
-.popup {
-    display: none; /* Skjult som standard */
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.5); /* Halvgennemsigtig sort baggrund */
-}
-
-/* Popup indhold */
-.popup-content {
-    background-color: #fff;
-    margin: 10% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 400px;
-    text-align: center;
-    border-radius: 10px;
-}
-
-/* Luk-knap */
-.close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.close:hover,
-.close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-/* Profilbillede i popup */
-.popup-profile-picture {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 20px;
-}
-
 /* Resten af dine temaer forbliver uændrede */
 
 .profile-picture {
@@ -409,4 +359,98 @@ body.dag-theme {
 
 .navbar .dropdown-toggle::after {
     display: none; /* Skjul pilen */
+}
+
+#map {
+    height: 500px;
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* Cookie popup styling */
+.cookie-popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    z-index: 9999;
+    color: black; /* Tving sort tekst */
+}
+
+.cookie-popup-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    color: black; /* Tving sort tekst */
+}
+
+/* Fjern tekstskygge fra cookie-popup */
+.cookie-popup-content h2,
+.cookie-popup-content p,
+.cookie-popup-content a,
+.cookie-popup-content strong {
+    color: black !important; /* Tving sort tekst */
+    text-shadow: none !important; /* Fjern tekstskygge */
+}
+
+.cookie-popup-content a {
+    text-decoration: none;
+    color: blue; /* Blå links */
+}
+
+.cookie-popup-content a:hover {
+    text-decoration: underline;
+}
+
+.cookie-options label {
+    display: block;
+    margin-bottom: 10px;
+    color: black; /* Tving sort tekst */
+}
+
+.cookie-options p {
+    font-size: 0.9rem;
+    margin-top: 5px;
+    color: black; /* Tving sort tekst */
+}
+
+.cookie-buttons .btn {
+    margin-right: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+}
+
+.cookie-buttons .btn:last-child {
+    margin-right: 0;
+}
+
+/* Cookie popup knapper i en række */
+.cookie-buttons {
+    display: flex;
+    justify-content: center; /* Centrer knapperne vandret */
+    gap: 10px; /* Afstand mellem knapperne */
+    margin-top: 20px; /* Giv lidt afstand til indholdet ovenfor */
+}
+
+.cookie-buttons .btn {
+    flex: 1; /* Gør knapperne lige store (valgfrit) */
+    max-width: 150px; /* Sæt en maksimal bredde for knapperne */
+}
+
+.hidden {
+    display: none;
 }

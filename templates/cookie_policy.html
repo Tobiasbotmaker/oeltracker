@@ -1,12 +1,11 @@
-<!DOCTYPE html>
-<html lang="da">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cookiepolitik</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-</head>
-<body class="container mt-5">
+{% extends "base.html" %}
+
+{% block title %}
+Cookiepolitik
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
     <h1>Cookiepolitik</h1>
     <p>Vi tager dit privatliv alvorligt. Denne side forklarer, hvordan vi bruger cookies og lokal lagring i vores applikation.</p>
 
@@ -14,12 +13,21 @@
     <p>Cookies er små tekstfiler, der gemmes på din enhed, når du besøger en hjemmeside. De bruges til at forbedre din oplevelse og sikre, at siden fungerer korrekt.</p>
 
     <h2>Hvordan bruger vi cookies?</h2>
-    <p>Vi bruger kun nødvendige cookies til at sikre, at vores applikation fungerer korrekt. Disse cookies bruges til:</p>
+    <p>Man kan dele vores cookies op i to kategorier:</p>
+    <h3>1. Nødvendige cookies</h3>
+    <p>Disse cookies er essentielle for, at applikationen fungerer korrekt. De kræver ikke samtykke og slettes automatisk, når du lukker browseren.</p>
     <ul>
-        <li>At holde dig logget ind under din session.</li>
-        <li>At gemme dine præferencer, såsom temaindstillinger.</li>
+        <li><strong>Session:</strong> Holder dig logget ind, mens du navigerer på siden.</li>
+        <li><strong>Csrf_token:</strong> Beskytter mod CSRF-angreb (Cross-Site Request Forgery).</li>
+        <li><strong>Csp_nonce:</strong> Sikrer, at kun autoriserede scripts kan køre (Content Security Policy).</li>
     </ul>
-    <p>Disse cookies er essentielle for applikationens funktionalitet og kræver ikke samtykke.</p>
+    
+    <h3>2. Præference-cookies</h3>
+    <p>Disse cookies bruges til at forbedre din oplevelse og gemmes, indtil du rydder dine cookies. De kræver dit samtykke.</p>
+    <ul>
+        <li><strong>Tema:</strong> Gemmer dit valg af tema (dag/nat), så du ikke behøver at ændre det hver gang.</li>
+        <li><strong>Lokalitet:</strong> Gemmer dit valg om tilladelse til brug af lokation.</li>
+    </ul>
 
     <h2>Hvordan bruger vi lokal lagring?</h2>
     <p>Vi bruger lokal lagring i din browser til at gemme følgende oplysninger:</p>
@@ -36,10 +44,11 @@
     <p>Du kan kontrollere og slette cookies via dine browserindstillinger. Bemærk, at hvis du deaktiverer cookies, kan nogle funktioner i applikationen muligvis ikke fungere korrekt.</p>
 
     <h2>Kontakt os</h2>
-    <p>Hvis du har spørgsmål om vores brug af cookies, er du velkommen til at kontakte os via vores <a href="{{ url_for('about') }}">kontaktformular</a>.</p>
-
-    <div class="text-left mt-4">
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">Tilbage til forsiden</a>
-    </div>
-</body>
-</html>
+    <p>
+        Hvis du har spørgsmål om vores brug af cookies, er du velkommen til at kontakte os via vores mail
+        <span id="email-link" style="cursor: pointer; color: blue; text-decoration: underline;">
+            ØlSpillet@gmail.com
+        </span>
+    </p>
+</div>
+{% endblock %}

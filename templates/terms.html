@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}
+Brugervilkår
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Brugervilkår</h1>
+    <p>Velkommen til Øl Tracker! Ved at bruge denne applikation accepterer du følgende vilkår:</p>
+
+    <h2>1. Introduktion</h2>
+    <p>Øl Tracker er en webapplikation, der giver brugerne mulighed for at holde styr på deres ølforbrug, sammenligne statistik med venner og få ølanbefalinger.</p>
+
+    <h2>2. Accept af vilkår</h2>
+    <p>Ved at bruge Øl Tracker accepterer du disse vilkår. Hvis du ikke accepterer vilkårene, skal du undlade at bruge applikationen.</p>
+
+    <h2>3. Brugeransvar</h2>
+    <ul>
+        <p>Som bruger af denne applikation er du eneansvarlig for alt indhold, du uploader, deler eller interagerer med. Dette inkluderer, men er ikke begrænset til, tekst, billeder og andre medier. Du må ikke bruge applikationen til ulovlige aktiviteter eller til at krænke andres rettigheder.</p>
+        <li>Dit brugernavn skal være unikt og må ikke indeholde stødende, diskriminerende eller ulovligt indhold.</li>
+        <li>Du er ansvarlig for at holde dit kodeord hemmeligt og beskytte din konto mod uautoriseret adgang.</li>
+        <li>Du må ikke bruge applikationen til at chikanere, true eller skade andre brugere.</li>
+        <li>Du må ikke tage eller på nogen måde udnytte andres profilbilleder uden deres tilladelse.</li>
+        <li>Du må ikke uploade indhold, der krænker ophavsrettigheder, eller som er stødende eller ulovligt.</li>
+        <li>Du må ikke forsøge at manipulere eller hacke applikationen, herunder omgå sikkerhedsforanstaltninger.</li>
+        <li>Ved overtrædelse af disse vilkår forbeholder vi os retten til at suspendere eller afslutte din konto uden varsel.</li>
+    </ul>
+
+    <h2>4. Begrænsning af ansvar</h2>
+    <p>Øl Tracker leveres "som den er". Vi er ikke ansvarlige for tab, skader eller fejl, der opstår ved brug af applikationen.</p>
+
+    <h3>5. Ophavsret og indhold</h3>
+    <p>Brugerne er ansvarlige for at sikre, at alt indhold, de uploader eller deler via applikationen, ikke krænker tredjeparts ophavsrettigheder, varemærker eller andre juridiske rettigheder. Vi forbeholder os retten til at fjerne indhold, der rapporteres som krænkende.</p>
+
+    <h3>6. Rapportering af misbrug</h3>
+    <p>Hvis du opdager ulovligt eller krænkende indhold på applikationen, bedes du kontakte os på <a href="mailto:ØlSpillet@gmail.com">ØlSpillet@gmail.com</a>. Vi vil undersøge sagen og tage passende handlinger.</p>
+
+    <h2>7. Privatliv og datahåndtering</h2>
+    <p>Vi respekterer dit privatliv. Læs vores <a href="{{ url_for('privacy_policy') }}">privatlivspolitik</a> for at få mere at vide om, hvordan vi håndterer dine data.</p>
+
+    <h2>8. Ændringer i vilkår</h2>
+    <p>Vi forbeholder os retten til at opdatere disse vilkår. Eventuelle ændringer vil blive offentliggjort på denne side.</p>
+
+    <h3>9. Begrænsning af ansvar</h3>
+    <p>Vi er ikke ansvarlige for direkte, indirekte, tilfældige eller følgeskader, der opstår som følge af brugen af denne applikation. Dette inkluderer, men er ikke begrænset til, tab af data, økonomiske tab eller skader forårsaget af tredjeparts handlinger.</p>
+
+    <h3>10. Ansvarsfraskrivelse</h3>
+    <p>Vi påtager os intet ansvar for ulovlige handlinger udført af brugere af denne applikation. Det er brugerens ansvar at overholde gældende lovgivning og regler. Vi forbeholder os retten til at suspendere eller slette konti, der overtræder vores vilkår eller lovgivningen.</p>
+
+    <h3>11. Datasikkerhed</h3>
+    <p>Vi tager datasikkerhed alvorligt og bruger passende tekniske og organisatoriske foranstaltninger for at beskytte dine data. Dog kan vi ikke garantere 100% sikkerhed mod uautoriseret adgang eller databrud.</p>
+
+    <h2>12. Kontakt</h2>
+    <p>Hvis du har spørgsmål om disse vilkår, kan du kontakte os på <a href="mailto:ølspillet@gmail.com">ølspillet@gmail.com</a>.</p>
+</div>
+{% endblock %}

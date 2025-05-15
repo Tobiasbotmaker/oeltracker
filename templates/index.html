@@ -5,37 +5,25 @@
 
 {% block content %}
 <div class="beer-background">
-    <br>
     <h1 class="mt-5 beer-title">Velkommen, {{ username }}</h1>
     <p class="beer-text">Antal øl du har drukket: {{ total_beers }}</p>
     {% if last_beer_time %}
         <p class="beer-text">Sidste øl du har drukket: {{ last_beer_time }}</p>
     {% else %}
-        <p class="beer-text">Ingen øl drukket endnu</p>
+        <p class="beer-text">Sidste øl du har drukket: Ingen øl drukket endnu</p>
     {% endif %}
     <p class="beer-text">Du og dine venner har i alt drukket {{ total_user_and_friends_beers }} øl</p>
     <p class="beer-text">Antal øl drukket af alle brugere i alt siden serveren blev oprettet: {{ total_beers_ever }}</p>
     <form id="addBeerForm" action="{{ url_for('add_beer') }}" method="post" class="mb-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="button" class="btn btn-success" onclick="addBeer()">Registrer øl</button>
+        <button type="button" class="btn btn-success" id="addBeerButton">Registrer øl</button>
     </form>
     <form id="deleteBeerForm" action="{{ url_for('delete_beer') }}" method="post" class="d-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="button" class="btn btn-danger" onclick="confirmDelete()">Slet øl</button>
+        <button type="button" class="btn btn-danger" id="deleteBeerButton">Slet øl</button>
     </form>
     {% if is_admin %}
         <a href="{{ url_for('admin') }}" class="btn btn-secondary mt-3">Admin side</a>
     {% endif %}
 </div>
-<script>
-    function addBeer() {
-        document.getElementById('addBeerForm').submit();
-    }
-
-    function confirmDelete() {
-        if (confirm("Er du sikker på, at du vil slette en øl?")) {
-            document.getElementById('deleteBeerForm').submit();
-        }
-    }
-</script>
 {% endblock %}

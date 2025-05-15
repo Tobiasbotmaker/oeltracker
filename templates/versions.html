@@ -1,0 +1,21 @@
+<!-- filepath: /Users/tobiasbork/Downloads/beerspil/templates/versions.html -->
+{% extends "base.html" %}
+
+{% block title %}
+Versionslog
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Versionslog</h1>
+    <ul class="list-group mt-3">
+        {% for log in version_logs %}
+        <li class="list-group-item">
+            <h5>Version {{ log.version }}</h5>
+            <p>{{ log.description }}</p>
+            <small class="text-muted">Logget: {{ log.created_at.strftime('%d-%m-%Y %H:%M:%S') }}</small>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

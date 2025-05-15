@@ -1,104 +1,177 @@
 {% extends "base.html" %}
 
 {% block title %}
-Din Profil
+Profil - {{ user.username }}
 {% endblock %}
 
 {% block content %}
-<h1 class="mt-5">Din Profil: {{ user.username }}</h1>
-<div class="text-center">
-    <img 
-        src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
-        alt="Profilbillede" 
-        class="profile-picture-large mb-3"
-        style="max-width: 150px; max-height: 150px; border-radius: 50%; object-fit: cover;">
-    <form id="profilePictureForm" enctype="multipart/form-data" onsubmit="uploadProfilePicture(event)">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="file" name="profile_picture" accept="image/*" class="form-control mb-3">
-        <button type="submit" class="btn btn-primary">Upload nyt billede</button>
-    </form>
-</div>
-
-<div class="text-center mt-5">
-    <h3>Skift brugernavn</h3>
-    {% if cooldown_message %}
-        <p class="text-danger">{{ cooldown_message }}</p>
-    {% else %}
-        <form id="changeUsernameForm" method="post" action="{{ url_for('change_username') }}" onsubmit="return confirmUsernameChange()">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <input 
-                    type="text" 
-                    name="new_username" 
-                    class="form-control mb-3" 
-                    placeholder="Indtast nyt brugernavn" 
-                    required 
-                    autocomplete="off">
-                <input type="hidden" name="confirm_change" value="1">
-            </div>
-            <button type="submit" class="btn btn-primary">Opdater brugernavn</button>
-        </form>
-    {% endif %}
-</div>
-
-<div>
-    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Tilbage</a>
-</div>
-{% endblock %}
-
-{% block extra_buttons %}
-<a href="javascript:void(0);" onclick="confirmDeleteAccount()" class="btn btn-danger">Slet konto</a>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    window.onload = function() {
-        const flashMessage = "{{ get_flashed_messages()[0] if get_flashed_messages() else '' }}";
-        if (flashMessage) {
-            alert(flashMessage);
-        }
-
-        const theme = localStorage.getItem('theme');
-        if (theme) {
-            document.body.className = theme + '-theme';
-        }
-    };
-
-    function uploadProfilePicture(event) {
-        event.preventDefault();
-        const form = document.getElementById('profilePictureForm');
-        const formData = new FormData(form);
-
-        fetch('{{ url_for("upload_profile_picture") }}', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.message || 'Der opstod en fejl.');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.status !== 'success') {
-                alert(data.message);
-            } else {
-                location.reload();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(error.message || 'Der opstod en fejl. Prøv igen senere.');
-        });
+<style>
+    /* Positioner tælleren inde i tekstfeltet */
+    #bio-counter {
+        position: absolute;
+        bottom: 10px;
+        right: 15px;
+        font-size: 0.9rem;
+        color: #6c757d; /* Bootstrap's text-muted farve */
+        pointer-events: none; /* Sørg for, at tælleren ikke kan interageres med */
     }
 
-    function confirmDeleteAccount() {
-        const confirmation = confirm("Er du sikker på, at du vil slette din konto? Denne handling kan ikke fortrydes.");
-        if (confirmation) {
-            window.location.href = "{{ url_for('delete_account') }}";
-        }
+    #bio {
+        padding-bottom: 30px; /* Giv plads til tælleren i tekstfeltet */
     }
-</script>
+</style>
+<div class="container mt-5">
+    <div class="row">
+        <!-- Venstre kolonne -->
+        <div class="col-md-4 text-center">
+            <img 
+            src="{{ user.profile_picture or url_for('static', filename='icon-5355896_640.png') }}" 
+            alt="Profilbillede" 
+            class="img-fluid rounded-circle mb-3" 
+            style="width: 150px; height: 150px; object-fit: cover;">
+            <h3>{{ user.username }}</h3>
+
+            {% if user.id == logged_in_user.id %}
+                <!-- Egen profil -->
+                <p><strong>Har været oprettet siden:</strong> {{ user.created_at.strftime('%d/%m/%Y') }}</p>
+                <p><strong>Antal øl drukket:</strong> 
+                    {% if total_beers > 0 %}
+                        {{ total_beers }} øl
+                    {% else %}
+                        Ingen øl drukket endnu
+                    {% endif %}
+                </p>
+                <p><strong>Sidste øl drukket:</strong> 
+                    {% if last_beer_time %}
+                        {{ last_beer_time }}
+                    {% else %}
+                        Ingen øl drukket endnu
+                    {% endif %}
+                </p>
+                <p><strong>Biografi:</strong> 
+                    {% if user.bio %}
+                        {{ user.bio }}
+                    {% else %}
+                        Du har ikke angivet en biografi endnu.
+                    {% endif %}
+                </p>
+            {% else %}
+                <!-- Andens profil -->
+                {% if status == 'pending_received' %}
+                <div id="friend-request-container">
+                    <p class="text">Denne person har sendt dig en venneanmodning:</p>
+                    <div id="friend-buttons-container">
+                        <button class="btn btn-success mb-2 friend-action-btn" data-action="accept_request" data-friendship-id="{{ friendship_id }}">Accepter</button>
+                        <button class="btn btn-danger mb-2 friend-action-btn" data-action="reject_request" data-friendship-id="{{ friendship_id }}">Afvis</button>
+                    </div>
+                </div>
+            {% elif status == 'accepted' %}
+                <div id="friend-request-container">
+                    <p class="text-muted">I har været venner siden {{ friendship_created_at.strftime('%d. %B %Y') }}.</p>
+                    <div id="friend-buttons-container">
+                        <button class="btn btn-danger mb-2 friend-action-btn" data-action="remove_friend" data-friendship-id="{{ friendship_id }}">Fjern ven</button>
+                    </div>
+                </div>
+            {% elif status == 'none' %}
+                <div id="friend-request-container">
+                    <div id="friend-buttons-container">
+                        <button class="btn btn-primary mb-2 friend-action-btn" data-action="send_request" data-user-id="{{ user.id }}">Send venneanmodning</button>
+                    </div>
+                </div>
+            {% elif status == 'pending_sent' %}
+                <div id="friend-request-container">
+                    <div id="friend-buttons-container">
+                        <button class="btn btn-warning mb-2 friend-action-btn" data-action="cancel_request" data-user-id="{{ user.id }}">Annuller anmodning</button>
+                    </div>
+                </div>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Højre kolonne -->
+        <div class="col-md-8">
+            {% if user.id == logged_in_user.id %}
+                <!-- Egen profil -->
+                <h3>Rediger din profil</h3>
+                <form id="profilePictureForm" enctype="multipart/form-data" method="post" action="{{ url_for('upload_profile_picture') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                        <label for="profile_picture">Upload nyt profilbillede:</label>
+                        <input type="file" name="profile_picture" accept="image/*" class="form-control mb-3">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Opdater billede</button>
+                </form>
+                <hr>
+                <h3>Skift brugernavn</h3>
+                {% if cooldown_message %}
+                    <p class="text-danger">{{ cooldown_message }}</p>
+                {% else %}
+                    <form id="changeUsernameForm" method="post" action="{{ url_for('change_username') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="confirm_change" value="true">
+                        <div class="form-group">
+                            <label for="new_username">Nyt brugernavn:</label>
+                            <input 
+                                type="text" 
+                                name="new_username" 
+                                class="form-control mb-3" 
+                                placeholder="Indtast nyt brugernavn" 
+                                maxlength="20"
+                                required 
+                                autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Opdater brugernavn</button>
+                    </form>
+                {% endif %}
+                <hr>
+                <h3>Angiv din biografi</h3>
+                <form id="bioForm" method="post" action="{{ url_for('update_bio') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group" style="position: relative;">
+                        <label for="bio">Biografi:</label>
+                        <textarea 
+                            id="bio" 
+                            name="bio" 
+                            class="form-control mb-3" 
+                            placeholder="Skriv lidt om dig selv..." 
+                            rows="4" 
+                            maxlength="500"
+                            required>{{ user.bio if user.bio else '' }}</textarea>
+                        <span id="bio-counter" class="text-muted">0/500</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Opdater biografi</button>
+                </form>
+                <hr>
+                <h3>Slet din konto</h3>
+                <form id="deleteAccountForm" method="post" action="{{ url_for('delete_account') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Slet konto</button>
+                </form>
+            {% else %}
+                <!-- Andens profil -->
+                <p><strong>Antal øl drukket:</strong> 
+                    {% if total_beers > 0 %}
+                        {{ total_beers }} øl
+                    {% else %}
+                        Ingen øl drukket endnu
+                    {% endif %}
+                </p>
+                <p><strong>Sidste øl drukket:</strong> 
+                    {% if last_beer_time %}
+                        {{ last_beer_time }}
+                    {% else %}
+                        Ingen øl drukket endnu
+                    {% endif %}
+                </p>
+                <p><strong>Biografi:</strong> 
+                    {% if user.bio %}
+                        {{ user.bio }}
+                    {% else %}
+                        Denne bruger har ikke angivet en biografi.
+                    {% endif %}
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}
